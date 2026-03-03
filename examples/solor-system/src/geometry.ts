@@ -16,8 +16,12 @@ export function generateSphere(latBands: number, longBands: number): Mesh {
     for (let lon = 0; lon <= longBands; lon++) {
       // 왼쪽에서 오른쪽으로의 각도 (0 ~ 2PI)
       const phi = (lon * 2 * Math.PI) / longBands;
+      // 위에서 바라보았을 때 반지름이 sinT이므로
+      // 반지름 * cos(phi) = x
       const x = sinT * Math.cos(phi);
+      // y는 lon에 영향을 받지 않고 위에서 아래로만 변함
       const y = cosT;
+      // 반지름 * sin(phi) = z
       const z = sinT * Math.sin(phi);
       const u = lon / longBands;
       const v = lat / latBands;
@@ -31,6 +35,9 @@ export function generateSphere(latBands: number, longBands: number): Mesh {
     for (let lon = 0; lon < longBands; lon++) {
       const first = lat * (longBands + 1) + lon;
       const second = first + longBands + 1;
+      // 6개 = 삼각형 2개 = 사각형 1개
+      // 각 숫자는 정점의 인덱스를 의미함
+      // 예) 정점 0번 = verts[0..7] (8개 요소: position(3) + normal(3) + uv(2))
       idxs.push(first, first + 1, second);
       idxs.push(second, first + 1, second + 1);
     }
@@ -46,6 +53,8 @@ export function generateRing(innerR: number, outerR: number, segments: number): 
   const verts: number[] = [];
   const idxs: number[] = [];
 
+  // verts에서는 y값이 0으로 고정되어 있음 (x,z 평면에 놓임)
+  // 실제 렌더링에서 기울기에 있는 이유는 renderer에서 행렬로 회전하기 때문
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * Math.PI * 2;
     const cos = Math.cos(angle);
