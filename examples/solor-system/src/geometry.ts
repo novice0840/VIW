@@ -8,11 +8,13 @@ export function generateSphere(latBands: number, longBands: number): Mesh {
   const idxs: number[] = [];
 
   for (let lat = 0; lat <= latBands; lat++) {
+    // 위에서 아래로의 각도 (0 ~ PI)
     const theta = (lat * Math.PI) / latBands;
     const sinT = Math.sin(theta);
     const cosT = Math.cos(theta);
 
     for (let lon = 0; lon <= longBands; lon++) {
+      // 왼쪽에서 오른쪽으로의 각도 (0 ~ 2PI)
       const phi = (lon * 2 * Math.PI) / longBands;
       const x = sinT * Math.cos(phi);
       const y = cosT;
