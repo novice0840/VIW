@@ -101,10 +101,8 @@ export function generateStars(count: number): StarData {
     // random point on sphere shell at radius 250-400
     // theta: 0 ~ 2π  (0° ~ 360°)  → 수평 회전 (경도)
     // phi:   0 ~ π   (0° ~ 180°)  → 수직 각도 (위도, 북극 → 남극)
-
     const theta = Math.random() * Math.PI * 2;
-    // const phi = Math.acos(2 * Math.random() - 1);
-    const phi = Math.random() * Math.PI; // 위에서 아래로 균등하게 분포하도록 수정
+    const phi = Math.acos(2 * Math.random() - 1);
     const r = 250 + Math.random() * 150;
     const x = r * Math.sin(phi) * Math.cos(theta);
     const y = r * Math.sin(phi) * Math.sin(theta);
