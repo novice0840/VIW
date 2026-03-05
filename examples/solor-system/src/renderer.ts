@@ -94,14 +94,16 @@ export class Renderer {
       vertex: {
         module: sphereModule,
         entryPoint: 'vs_main',
-        buffers: [{
-          arrayStride: 32,
-          attributes: [
-            { shaderLocation: 0, offset: 0, format: 'float32x3' },
-            { shaderLocation: 1, offset: 12, format: 'float32x3' },
-            { shaderLocation: 2, offset: 24, format: 'float32x2' },
-          ],
-        }],
+        buffers: [
+          {
+            arrayStride: 32,
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: 'float32x3' },
+              { shaderLocation: 1, offset: 12, format: 'float32x3' },
+              { shaderLocation: 2, offset: 24, format: 'float32x2' },
+            ],
+          },
+        ],
       },
       fragment: {
         module: sphereModule,
@@ -123,23 +125,25 @@ export class Renderer {
       vertex: {
         module: orbitModule,
         entryPoint: 'vs_main',
-        buffers: [{
-          arrayStride: 12,
-          attributes: [
-            { shaderLocation: 0, offset: 0, format: 'float32x3' },
-          ],
-        }],
+        buffers: [
+          {
+            arrayStride: 12,
+            attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' }],
+          },
+        ],
       },
       fragment: {
         module: orbitModule,
         entryPoint: 'fs_main',
-        targets: [{
-          format: this.format,
-          blend: {
-            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
-            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+        targets: [
+          {
+            format: this.format,
+            blend: {
+              color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+              alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+            },
           },
-        }],
+        ],
       },
       depthStencil: {
         format: 'depth24plus',
@@ -156,24 +160,28 @@ export class Renderer {
       vertex: {
         module: ringModule,
         entryPoint: 'vs_main',
-        buffers: [{
-          arrayStride: 20, // pos(3) + uv(2) = 5 floats
-          attributes: [
-            { shaderLocation: 0, offset: 0, format: 'float32x3' },
-            { shaderLocation: 1, offset: 12, format: 'float32x2' },
-          ],
-        }],
+        buffers: [
+          {
+            arrayStride: 20, // pos(3) + uv(2) = 5 floats
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: 'float32x3' },
+              { shaderLocation: 1, offset: 12, format: 'float32x2' },
+            ],
+          },
+        ],
       },
       fragment: {
         module: ringModule,
         entryPoint: 'fs_main',
-        targets: [{
-          format: this.format,
-          blend: {
-            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
-            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+        targets: [
+          {
+            format: this.format,
+            blend: {
+              color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+              alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+            },
           },
-        }],
+        ],
       },
       depthStencil: {
         format: 'depth24plus',
@@ -190,26 +198,30 @@ export class Renderer {
       vertex: {
         module: starModule,
         entryPoint: 'vs_main',
-        buffers: [{
-          arrayStride: 28, // center(3) + color(3) + size(1) = 7 floats
-          stepMode: 'instance',
-          attributes: [
-            { shaderLocation: 0, offset: 0, format: 'float32x3' },
-            { shaderLocation: 1, offset: 12, format: 'float32x3' },
-            { shaderLocation: 2, offset: 24, format: 'float32' },
-          ],
-        }],
+        buffers: [
+          {
+            arrayStride: 28, // center(3) + color(3) + size(1) = 7 floats
+            stepMode: 'instance',
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: 'float32x3' },
+              { shaderLocation: 1, offset: 12, format: 'float32x3' },
+              { shaderLocation: 2, offset: 24, format: 'float32' },
+            ],
+          },
+        ],
       },
       fragment: {
         module: starModule,
         entryPoint: 'fs_main',
-        targets: [{
-          format: this.format,
-          blend: {
-            color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
-            alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+        targets: [
+          {
+            format: this.format,
+            blend: {
+              color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+              alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+            },
           },
-        }],
+        ],
       },
       depthStencil: {
         format: 'depth24plus',
@@ -262,7 +274,9 @@ export class Renderer {
     });
     this.ringObjBG = this.device.createBindGroup({
       layout: this.ringPipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: { buffer: this.objectUniformBuffers[1 + PLANETS.length] } }],
+      entries: [
+        { binding: 0, resource: { buffer: this.objectUniformBuffers[1 + PLANETS.length] } },
+      ],
     });
     this.starGlobalBG = this.device.createBindGroup({
       layout: this.starPipeline.getBindGroupLayout(0),
@@ -312,12 +326,18 @@ export class Renderer {
     this.starCount = stars.count;
   }
 
-  private writeObjectUniform(idx: number, model: Mat4, color: Vec3, emissive: number, glowColor: Vec3) {
+  private writeObjectUniform(
+    idx: number,
+    model: Mat4,
+    color: Vec3,
+    emissive: number,
+    glowColor: Vec3,
+  ) {
     const data = new Float32Array(OBJECT_UNIFORM_SIZE / 4);
-    data.set(model, 0);           // offset 0: mat4x4 (16 floats)
-    data.set(color, 16);          // offset 64: color vec3
-    data[19] = emissive;          // offset 76: emissive
-    data.set(glowColor, 20);      // offset 80: glowColor vec3
+    data.set(model, 0); // offset 0: mat4x4 (16 floats)
+    data.set(color, 16); // offset 64: color vec3
+    data[19] = emissive; // offset 76: emissive
+    data.set(glowColor, 20); // offset 80: glowColor vec3
     this.device.queue.writeBuffer(this.objectUniformBuffers[idx], 0, data);
   }
 
@@ -333,14 +353,14 @@ export class Renderer {
 
     // Write global uniforms
     const globalData = new Float32Array(GLOBAL_UNIFORM_SIZE / 4);
-    globalData.set(viewProj, 0);        // 0-15: viewProj
-    globalData.set(eye, 16);            // 16-18: cameraPos
+    globalData.set(viewProj, 0); // 0-15: viewProj
+    globalData.set(eye, 16); // 16-18: cameraPos
     // 19: pad
-    globalData.set(cameraRight, 20);    // 20-22: cameraRight
+    globalData.set(cameraRight, 20); // 20-22: cameraRight
     // 23: pad
-    globalData.set(cameraUp, 24);       // 24-26: cameraUp
+    globalData.set(cameraUp, 24); // 24-26: cameraUp
     // 27: pad
-    globalData[28] = time;              // 28: time
+    globalData[28] = time; // 28: time
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
     // Sun model matrix
@@ -376,12 +396,14 @@ export class Renderer {
     const encoder = this.device.createCommandEncoder();
     const textureView = this.context.getCurrentTexture().createView();
     const pass = encoder.beginRenderPass({
-      colorAttachments: [{
-        view: textureView,
-        clearValue: { r: 0.01, g: 0.01, b: 0.02, a: 1 },
-        loadOp: 'clear',
-        storeOp: 'store',
-      }],
+      colorAttachments: [
+        {
+          view: textureView,
+          clearValue: { r: 0.01, g: 0.01, b: 0.02, a: 1 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
       depthStencilAttachment: {
         view: this.depthTexture.createView(),
         depthClearValue: 1.0,

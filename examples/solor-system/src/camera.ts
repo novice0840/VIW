@@ -53,11 +53,15 @@ export class Camera {
       this.dragging = false;
     });
 
-    canvas.addEventListener('wheel', (e) => {
-      this.radius = Math.max(
-        this.minRadius,
-        Math.min(this.maxRadius, this.radius + e.deltaY * 0.05),
-      );
-    }, { passive: true });
+    canvas.addEventListener(
+      'wheel',
+      (e) => {
+        this.radius = Math.max(
+          this.minRadius,
+          Math.min(this.maxRadius, this.radius + e.deltaY * 0.05),
+        );
+      },
+      { passive: true },
+    );
   }
 }
