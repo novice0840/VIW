@@ -5,6 +5,7 @@ export type Vec3 = [number, number, number];
 
 export const mat4 = {
   identity(): Mat4 {
+    // 단위 행렬을 반환하는 함수
     const m = new Float32Array(16);
     m[0] = 1;
     m[5] = 1;

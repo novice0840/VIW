@@ -7,9 +7,9 @@
 코드 이해
 
 - [ ] camera.ts
-- [ ] geometry.ts
+- [x] geometry.ts
 - [ ] main.ts
 - [ ] math.ts
 - [ ] render.ts
-- [ ] scene.ts
+- [x] scene.ts
 - [ ] shader.ts
