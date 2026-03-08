@@ -82,6 +82,9 @@ export const mat4 = {
     return m;
   },
 
+  /**
+   * @description 두 행렬을 곱하는 함수
+   */
   multiply(a: Mat4, b: Mat4): Mat4 {
     const m = new Float32Array(16);
     for (let i = 0; i < 4; i++) {
@@ -96,6 +99,35 @@ export const mat4 = {
     return m;
   },
 
+  /**
+   * @description 좌표를 이동시키는 행렬
+   *
+   * tx, ty, tz를 좌표에 곧바로 더하지 않고 행렬 곱셈을 사용하는 이유는 다른 연산과 함께 사용하기 위함이다.
+   *
+   * 행렬 없이 하면
+   * 이동 → 회전 → 크기 → 투영 → 뷰 를 각각 따로 계산
+   * pos = pos * scale;
+   * pos = rotate(pos);
+   * pos = pos + translation;
+   * pos = applyView(pos);
+   * pos = applyProjection(pos);
+   * 정점 하나마다 이 연산을 모두 수행해야 한다.
+   *
+   * 행렬로 하면
+   * 행렬끼리 미리 곱해서 하나로 합침
+   * MVP = projection × view × translate × rotate × scale
+   *
+   * 정점마다 곱셈 한 번
+   * pos = MVP × vertex
+   * 행렬 합치기는 한 번만 하고, 정점이 수천~수만 개여도 각 정점에 행렬 곱 한 번으로 끝난다.
+   *
+   * GPU 셰이더도 행렬 × 벡터 곱셈에 최적화되어 있어서, 모든 변환을 하나의 행렬로 통일하는 것이 가장 효율적이다.
+   * @param m
+   * @param tx
+   * @param ty
+   * @param tz
+   * @returns
+   */
   translate(m: Mat4, tx: number, ty: number, tz: number): Mat4 {
     const t = mat4.identity();
     t[12] = tx;
@@ -104,6 +136,14 @@ export const mat4 = {
     return mat4.multiply(m, t);
   },
 
+  /**
+   * @description 좌표의 크기를 조절하는 함수
+   * @param m
+   * @param sx
+   * @param sy
+   * @param sz
+   * @returns
+   */
   scale(m: Mat4, sx: number, sy: number, sz: number): Mat4 {
     const s = mat4.identity();
     s[0] = sx;
