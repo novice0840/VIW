@@ -8,8 +8,8 @@
 
 - [ ] camera.ts
 - [x] geometry.ts
-- [ ] main.ts
-- [ ] math.ts
+- [x] main.ts
+- [x] math.ts
 - [ ] render.ts
 - [x] scene.ts
 - [ ] shader.ts
