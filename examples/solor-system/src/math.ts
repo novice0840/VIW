@@ -152,6 +152,13 @@ export const mat4 = {
     return mat4.multiply(m, s);
   },
 
+  /**
+   * @description x축을 기준으로 좌표를 회전시키는 함수
+   * webGPU는 왼손 좌표계를 사용, X축 양의 방향(오른쪽)에서 바라봤을 때 Y -> Z 방향으로 회전합니다.
+   * @param m
+   * @param angle
+   * @returns
+   */
   rotateX(m: Mat4, angle: number): Mat4 {
     const c = Math.cos(angle),
       s = Math.sin(angle);
