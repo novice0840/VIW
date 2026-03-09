@@ -170,6 +170,12 @@ export const mat4 = {
     return mat4.multiply(m, r);
   },
 
+  /**
+   * @description y축을 기준으로 좌표를 회전시키는 함수
+   * @param m
+   * @param angle
+   * @returns
+   */
   rotateY(m: Mat4, angle: number): Mat4 {
     const c = Math.cos(angle),
       s = Math.sin(angle);
@@ -181,6 +187,12 @@ export const mat4 = {
     return mat4.multiply(m, r);
   },
 
+  /**
+   * @description z축을 기준으로 좌표를 회전시키는 함수
+   * @param m
+   * @param angle
+   * @returns
+   */
   rotateZ(m: Mat4, angle: number): Mat4 {
     const c = Math.cos(angle),
       s = Math.sin(angle);
