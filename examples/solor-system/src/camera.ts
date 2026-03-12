@@ -1,9 +1,9 @@
 import { mat4, type Vec3 } from './math';
 
 export class Camera {
-  theta = 0.3;
-  phi = 1.0;
-  radius = 80;
+  theta = 0.3; // 수평 회전각 (경도))
+  phi = 1.0; // 수직 각도 (위도)
+  radius = 80; // 태양으로부터의 거리
 
   private readonly minRadius = 10;
   private readonly maxRadius = 200;
