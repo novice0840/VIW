@@ -10,6 +10,6 @@
 - [x] geometry.ts
 - [x] main.ts
 - [x] math.ts
-- [ ] renderer.ts
+- [x] renderer.ts
 - [x] scene.ts
-- [ ] shader.ts
+- [x] shader.ts
