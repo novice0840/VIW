@@ -6,7 +6,7 @@
 
 코드 이해
 
-- [ ] camera.ts
+- [x] camera.ts
 - [x] geometry.ts
 - [x] main.ts
 - [x] math.ts
