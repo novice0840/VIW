@@ -21,7 +21,8 @@ struct ObjectUniforms {
   _pad      : f32,
 };
 
-
+// 한 프레임에서 실제 변경 횟수 
+// group(0): per-frame (카메라 관련), group(1): per-object (모델 행렬, 색상 등)
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 @group(1) @binding(0) var<uniform> obj    : ObjectUniforms;
 
