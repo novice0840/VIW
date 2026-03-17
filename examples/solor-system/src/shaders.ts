@@ -21,6 +21,7 @@ struct ObjectUniforms {
   _pad      : f32,
 };
 
+
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 @group(1) @binding(0) var<uniform> obj    : ObjectUniforms;
 
