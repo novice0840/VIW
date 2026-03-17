@@ -6,10 +6,10 @@
 
 코드 이해
 
-- [ ] camera.ts
+- [x] camera.ts
 - [x] geometry.ts
 - [x] main.ts
 - [x] math.ts
-- [ ] render.ts
+- [x] renderer.ts
 - [x] scene.ts
-- [ ] shader.ts
+- [x] shader.ts

@@ -12,6 +12,7 @@ export class Camera {
   private readonly far = 500;
 
   private dragging = false;
+  // 마우스 드래그로 카메라를 회전할 때, 이전 프레임의 마우스 좌표를 저장하기 위해 사용
   private lastX = 0;
   private lastY = 0;
 
@@ -23,10 +24,17 @@ export class Camera {
     ];
   }
 
+  /**
+   * @description mat4.lootAt를 호출하여 view matrix를 생성하는 함수
+   * @returns view matrix
+   */
   getViewMatrix() {
     return mat4.lookAt(this.getEye(), [0, 0, 0], [0, 1, 0]);
   }
 
+  /**
+   * @description 투영 행렬을 생성하며, 3D 좌표를 2D 화면에 매핑할 때 원근감을 적용
+   */
   getProjectionMatrix(aspect: number) {
     return mat4.perspective(this.fov, aspect, this.near, this.far);
   }
@@ -46,6 +54,7 @@ export class Camera {
       this.lastX = e.clientX;
       this.lastY = e.clientY;
       this.theta -= dx * 0.005;
+      // phi가 0 ~ PI 범위를 벗어나면 안되기 때문에 클램핑 기능 추가
       this.phi = Math.max(0.05, Math.min(Math.PI - 0.05, this.phi + dy * 0.005));
     });
 

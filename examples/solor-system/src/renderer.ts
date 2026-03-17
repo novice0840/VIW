@@ -1,13 +1,6 @@
 import { mat4, type Mat4, type Vec3 } from './math';
 import { SPHERE_WGSL, ORBIT_WGSL, RING_WGSL, STAR_WGSL } from './shaders';
-import {
-  generateSphere,
-  generateRing,
-  generateOrbitLine,
-  generateStars,
-  type Mesh,
-  type StarData,
-} from './geometry';
+import { generateSphere, generateRing, generateOrbitLine, generateStars } from './geometry';
 import { Camera } from './camera';
 import { SUN, PLANETS, STAR_COUNT, type PlanetDef } from './scene';
 
