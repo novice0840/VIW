@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Minecraft - WebGPU</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #crosshair {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff; font-size: 24px; pointer-events: none;
+      text-shadow: 0 0 2px rgba(0,0,0,0.8);
+    }
+    #info {
+      position: absolute; top: 12px; left: 12px;
+      color: rgba(255,255,255,0.6); font: 13px monospace;
+      pointer-events: none;
+    }
+    #no-webgpu {
+      display: none;
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      color: #f66; font: 16px sans-serif; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="crosshair">+</div>
+  <div id="info">Click to play · WASD to move · Space/Shift to fly · Mouse to look</div>
+  <div id="no-webgpu">
+    WebGPU is not supported in this browser.<br />
+    Try Chrome 113+ or Edge 113+.
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
