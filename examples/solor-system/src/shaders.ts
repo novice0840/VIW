@@ -26,12 +26,15 @@ struct ObjectUniforms {
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 @group(1) @binding(0) var<uniform> obj    : ObjectUniforms;
 
+// @location(n)은 버텍스 버퍼에서 데이터를 어느 슬롯으로 받을지 지정하는 번호
 struct VertexInput {
   @location(0) position : vec3<f32>,
   @location(1) normal   : vec3<f32>,
   @location(2) uv       : vec2<f32>,
 };
 
+// @builtin(position)은 GPU가 미리 정해놓은 특별한 슬롯으로, 클립 공간 좌표를 전달하는 용도입니다. 
+// vertex shader에서 반드시 출력해야 하는 값으로, GPU가 이 값을 보고 화면의 어느 픽셀에 그릴지 결정합니다. 
 struct VertexOutput {
   @builtin(position) clipPos  : vec4<f32>,
   @location(0)       worldPos : vec3<f32>,
