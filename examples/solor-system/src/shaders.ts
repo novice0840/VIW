@@ -1,13 +1,13 @@
 export const SPHERE_WGSL = /* wgsl */ `
 struct GlobalUniforms {
-  viewProj    : mat4x4<f32>,
-  cameraPos   : vec3<f32>,
-  _pad0       : f32,
-  cameraRight : vec3<f32>,
+  viewProj    : mat4x4<f32>, // 뷰 행렬 x 프로젝션 행렬
+  cameraPos   : vec3<f32>, // 카메라 월드 좌표 (조명 계산용)
+  _pad0       : f32, 
+  cameraRight : vec3<f32>, // 카메라 오른쪽 방향 (빌보드용) * 빌보드란?: 항상 카메라를 향하도록 회전하는 오브젝트
   _pad1       : f32,
-  cameraUp    : vec3<f32>,
+  cameraUp    : vec3<f32>, // 카메라 위쪽 방향 (빌보드용)
   _pad2       : f32,
-  time        : f32,
+  time        : f32, // 경과 시간 (애니메이션용)
   _pad3       : f32,
   _pad4       : f32,
   _pad5       : f32,
@@ -27,6 +27,7 @@ struct ObjectUniforms {
 @group(1) @binding(0) var<uniform> obj    : ObjectUniforms;
 
 // @location(n)은 버텍스 버퍼에서 데이터를 어느 슬롯으로 받을지 지정하는 번호
+// 주의: position에는 행성의 중점이 아닌 행성 표면의 정점 좌표가 들어있음 (즉, 로컬 좌표계에서의 위치)
 struct VertexInput {
   @location(0) position : vec3<f32>,
   @location(1) normal   : vec3<f32>,
@@ -35,13 +36,30 @@ struct VertexInput {
 
 // @builtin(position)은 GPU가 미리 정해놓은 특별한 슬롯으로, 클립 공간 좌표를 전달하는 용도입니다. 
 // vertex shader에서 반드시 출력해야 하는 값으로, GPU가 이 값을 보고 화면의 어느 픽셀에 그릴지 결정합니다. 
+
+// 클립 좌표계:
+// - (0, 0) -> 화면 정중앙
+// - (-1, -1) -> 왼쪽 아래 
+// - (1, 1) -> 오른쪽 위
+// z값: 
+// - 0 -> near plane (카메라 바로 앞)
+// - 1 -> far plane (가장 멀리)
+// w값: 
+// - 원근 투영을 위해 존재 
+// - GPU가 최종적으로 x/w, y/w, z/w를 계산해서 실제 화면 좌표로 변환 (Perspective Divide)
 struct VertexOutput {
-  @builtin(position) clipPos  : vec4<f32>,
-  @location(0)       worldPos : vec3<f32>,
-  @location(1)       normal   : vec3<f32>,
-  @location(2)       uv       : vec2<f32>,
+  @builtin(position) clipPos  : vec4<f32>, // GPU가 화면에 그리는데 사용 
+  @location(0)       worldPos : vec3<f32>, // fragment shader에서 조명 계산에 사용
+  @location(1)       normal   : vec3<f32>, // normal (법선 벡터: 정점에서 표면의 향하는 방향을 나타내는 벡터입니다. 조명 계산에 사용됩니다.)
+  @location(2)       uv       : vec2<f32>, // uv (텍스처 좌표: 텍스처 이미지의 어느 픽셀을 이 정점에 매핑할지 나타내는 2D 좌표입니다, 현재 프로젝트에서는 사용되고 있지 않음)
 };
 
+// 좌표 변환 3단계
+// 로컬 좌표 (position)
+//  ↓ × 모델 행렬
+// 월드 좌표 (worldPos)
+//  ↓ × 뷰프로젝션 행렬
+// 클립 좌표 (clipPos)
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
   var out: VertexOutput;
