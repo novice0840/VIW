@@ -23,6 +23,24 @@ struct ObjectUniforms {
 
 // 한 프레임에서 실제 변경 횟수 
 // group(0): per-frame (카메라 관련), group(1): per-object (모델 행렬, 색상 등)
+
+// binding에 들어갈 수 있는 리소스 타입
+// 타입 / 용도 / 예시 
+// GPUBuffer / 유니폼,스토리지 데이터 / 행렬, 색상, 시간
+// GPUTextureView / 텍스쳐 이미지 / 행성 표면 이미지 
+// GPUSampler / 텍스쳐 샘플링 설정 / 필터링, 반복 모드
+// 현재 프로젝트는 GPUBuffer만 사용중
+
+// GPUBuffer vs uniform
+// var<uniform> - WGSL(셰이더) 측 선언
+// GPU 메모리 공간의 용도를 지정합니다:
+// WGSL 선언 / 의미 / 특징 
+// var<uniform> / 읽기 전용, 작은 데이터 / 행렬, 색상 등 
+// var<storage> / 읽기/쓰기 가능, 큰 데이터 / 파티클, 대량 데이터
+// var(텍스쳐) / 텍스쳐/샘플러 / var texture: texture_2d<f32>
+// GPUBuffer - JavaScript(CPU) 측 객체
+// GPU 메모리를 할당하는 컨테이너입니다. usage 플래그를 용도로 지정
+// * 셰이더(WSGL)에서는 GPUBuffer라는 개념 자체가 존재하지 않는다 
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 @group(1) @binding(0) var<uniform> obj    : ObjectUniforms;
 
