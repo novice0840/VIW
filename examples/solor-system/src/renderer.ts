@@ -4,7 +4,7 @@ import { generateSphere, generateRing, generateOrbitLine, generateStars } from '
 import { Camera } from './camera';
 import { SUN, PLANETS, STAR_COUNT, type PlanetDef } from './scene';
 
-const GLOBAL_UNIFORM_SIZE = 128;
+const GLOBAL_UNIFORM_SIZE = 112;
 const OBJECT_UNIFORM_SIZE = 96;
 const OBJECT_COUNT = 1 + PLANETS.length + 1; // sun + planets + saturn ring
 
@@ -93,7 +93,6 @@ export class Renderer {
             attributes: [
               { shaderLocation: 0, offset: 0, format: 'float32x3' },
               { shaderLocation: 1, offset: 12, format: 'float32x3' },
-              { shaderLocation: 2, offset: 24, format: 'float32x2' },
             ],
           },
         ],
@@ -323,6 +322,16 @@ export class Renderer {
     this.starCount = stars.count;
   }
 
+  /**
+   *
+   * @param idx
+   * @param model
+   * @param color - 오브젝트의 본체 색상
+   * @param emissive - 자체 발광 여부를 나타내는 값
+   * @param glowColor - 가장자리 빛번짐(림 글로우) 색상
+   * @description uniform buffer에 데이터를 주입하는 함수
+   * 현재 프로젝트는 오브젝트마다 별도의 버퍼를 만들었기 때문에 항상 offset 0입니다.
+   */
   private writeObjectUniform(
     idx: number,
     model: Mat4,
@@ -330,6 +339,7 @@ export class Renderer {
     emissive: number,
     glowColor: Vec3,
   ) {
+    // Float32Array의 원소 하나당 크기가 4 바이트이므로 4로 나눈 것
     const data = new Float32Array(OBJECT_UNIFORM_SIZE / 4);
     data.set(model, 0); // offset 0: mat4x4 (16 floats)
     data.set(color, 16); // offset 64: color vec3
@@ -349,6 +359,18 @@ export class Renderer {
     const cameraUp: Vec3 = [view[1], view[5], view[9]];
 
     // Write global uniforms
+    // globalData 초기값
+    // 인덱스 [0~15]: viewProj (4×4 행렬)
+    // | vp[0]   vp[4]   vp[8]   vp[12] |
+    // | vp[1]   vp[5]   vp[9]   vp[13] |
+    // | vp[2]   vp[6]   vp[10]  vp[14] |
+    // | vp[3]   vp[7]   vp[11]  vp[15] |
+    // 인덱스 [16~19]: cameraPos + pad
+    // | eye.x   eye.y   eye.z   0 |
+    // 인덱스 [20~23]: cameraRight + pad
+    // | right.x  right.y  right.z  0 |
+    // 인덱스 [24~27]: cameraUp + pad
+    // | up.x   up.y   up.z   0 |
     const globalData = new Float32Array(GLOBAL_UNIFORM_SIZE / 4);
     globalData.set(viewProj, 0); // 0-15: viewProj
     globalData.set(eye, 16); // 16-18: cameraPos
@@ -357,10 +379,16 @@ export class Renderer {
     // 23: pad
     globalData.set(cameraUp, 24); // 24-26: cameraUp
     // 27: pad
-    globalData[28] = time; // 28: time
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
     // Sun model matrix
+    // sunModel 4x4 행렬의 의미
+    // | scaleX   0       0       translateX |
+    // | 0        scaleY  0       translateY |
+    // | 0        0       scaleZ  translateZ |
+    // | 0        0       0       1          |
+    // scale = (r, r, r) -> 반지름 1인 구를 r배로 키움
+    // translate = (0, 0, 0) -> 이동 없음 (원점에 위치)
     const sunModel = mat4.scale(mat4.identity(), SUN.radius, SUN.radius, SUN.radius);
     this.writeObjectUniform(0, sunModel, SUN.color, 1.0, SUN.glowColor);
 

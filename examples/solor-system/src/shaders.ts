@@ -1,4 +1,8 @@
 export const SPHERE_WGSL = /* wgsl */ `
+// GlobalUniform -> 1개 (모든 오브젝트가 공유)
+// 프레임 당 한 번 세팅:
+// 카메라, 시간 등 → 모든 오브젝트에 동일
+// pass.setBindGroup(0, globalBindGroup);  // 한 번
 struct GlobalUniforms {
   viewProj    : mat4x4<f32>, // 뷰 행렬 x 프로젝션 행렬
   cameraPos   : vec3<f32>, // 카메라 월드 좌표 (조명 계산용)
@@ -7,12 +11,16 @@ struct GlobalUniforms {
   _pad1       : f32,
   cameraUp    : vec3<f32>, // 카메라 위쪽 방향 (빌보드용)
   _pad2       : f32,
-  time        : f32, // 경과 시간 (애니메이션용)
-  _pad3       : f32,
-  _pad4       : f32,
-  _pad5       : f32,
 };
 
+// ObjectUniform -> 오브젝트 수만큼 (태양 1개 + 행성 8개 + 링 1 = 10개)
+// pass.setBindGroup(1, objectBindGroups[0]);  // 태양
+// pass.drawIndexed(...);
+// pass.setBindGroup(1, objectBindGroups[1]);  // 수성
+// pass.drawIndexed(...);
+// pass.setBindGroup(1, objectBindGroups[2]);  // 금성
+// pass.drawIndexed(...);
+// ...
 struct ObjectUniforms {
   model     : mat4x4<f32>,
   color     : vec3<f32>,
@@ -49,7 +57,6 @@ struct ObjectUniforms {
 struct VertexInput {
   @location(0) position : vec3<f32>,
   @location(1) normal   : vec3<f32>,
-  @location(2) uv       : vec2<f32>,
 };
 
 // @builtin(position)은 GPU가 미리 정해놓은 특별한 슬롯으로, 클립 공간 좌표를 전달하는 용도입니다. 
@@ -66,10 +73,9 @@ struct VertexInput {
 // - 원근 투영을 위해 존재 
 // - GPU가 최종적으로 x/w, y/w, z/w를 계산해서 실제 화면 좌표로 변환 (Perspective Divide)
 struct VertexOutput {
-  @builtin(position) clipPos  : vec4<f32>, // GPU가 화면에 그리는데 사용 
+  @builtin(position) clipPos  : vec4<f32>, // GPU가 화면에 그리는데 사용
   @location(0)       worldPos : vec3<f32>, // fragment shader에서 조명 계산에 사용
   @location(1)       normal   : vec3<f32>, // normal (법선 벡터: 정점에서 표면의 향하는 방향을 나타내는 벡터입니다. 조명 계산에 사용됩니다.)
-  @location(2)       uv       : vec2<f32>, // uv (텍스처 좌표: 텍스처 이미지의 어느 픽셀을 이 정점에 매핑할지 나타내는 2D 좌표입니다, 현재 프로젝트에서는 사용되고 있지 않음)
 };
 
 // 좌표 변환 3단계
@@ -85,7 +91,6 @@ fn vs_main(in: VertexInput) -> VertexOutput {
   out.clipPos  = global.viewProj * vec4<f32>(worldPos, 1.0);
   out.worldPos = worldPos;
   out.normal   = normalize((obj.model * vec4<f32>(in.normal, 0.0)).xyz);
-  out.uv       = in.uv;
   return out;
 }
 
@@ -114,10 +119,6 @@ struct GlobalUniforms {
   _pad1       : f32,
   cameraUp    : vec3<f32>,
   _pad2       : f32,
-  time        : f32,
-  _pad3       : f32,
-  _pad4       : f32,
-  _pad5       : f32,
 };
 
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
@@ -148,10 +149,6 @@ struct GlobalUniforms {
   _pad1       : f32,
   cameraUp    : vec3<f32>,
   _pad2       : f32,
-  time        : f32,
-  _pad3       : f32,
-  _pad4       : f32,
-  _pad5       : f32,
 };
 
 struct ObjectUniforms {
@@ -210,10 +207,6 @@ struct GlobalUniforms {
   _pad1       : f32,
   cameraUp    : vec3<f32>,
   _pad2       : f32,
-  time        : f32,
-  _pad3       : f32,
-  _pad4       : f32,
-  _pad5       : f32,
 };
 
 struct VertexInput {
