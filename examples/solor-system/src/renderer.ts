@@ -225,6 +225,10 @@ export class Renderer {
     });
   }
 
+  /**
+   * @description uniform buffer를 생성하는 함수
+   * binding만 하고 데이터 주입은 writeObjectUniform 함수에서 이루어진다.
+   */
   private createUniformBuffers() {
     this.globalUniformBuffer = this.device.createBuffer({
       size: GLOBAL_UNIFORM_SIZE,
