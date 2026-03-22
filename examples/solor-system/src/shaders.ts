@@ -73,7 +73,7 @@ struct VertexInput {
 // - 원근 투영을 위해 존재 
 // - GPU가 최종적으로 x/w, y/w, z/w를 계산해서 실제 화면 좌표로 변환 (Perspective Divide)
 struct VertexOutput {
-  @builtin(position) clipPos  : vec4<f32>, // GPU가 화면에 그리는데 사용
+  @builtin(position) clipPos  : vec4<f32>, // GPU가 화면에 그리는데 사용, builtin(position)의 타입은 WGSL에서 vec4<f32>로 고정되어 있음 
   @location(0)       worldPos : vec3<f32>, // fragment shader에서 조명 계산에 사용
   @location(1)       normal   : vec3<f32>, // normal (법선 벡터: 정점에서 표면의 향하는 방향을 나타내는 벡터입니다. 조명 계산에 사용됩니다.)
 };
@@ -87,6 +87,20 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
   var out: VertexOutput;
+  // in.position - 행성의 중점의 좌표가 아닌 행성을 구성하는 삼각형의 좌표가 들어간다. 
+  // in.position이 (0, 0, 1) 일 때의 값 (태양을 기준으로 계산)
+  // model = | 3.5  0    0    0 |
+  //         | 0    3.5  0    0 |
+  //         | 0    0    3.5  0 |
+  //         | 0    0    0    1 |
+  // worldPos = (0, 0, 3.5)
+  // normal = (0, 0, 1)
+  // clipPos = (-1.007, -3.128, 77.20, 77.19)
+  // NDC = (-0.013, -0.041, 0.999)
+  // x, y의 범위가 -1 ~ 1이므로 화면 정중앙에서 왼쪽 살짝 아래에 위치함 
+  // NDC에서 z 값의 존재 이유 -> depth test에 사용 
+
+
   let worldPos = (obj.model * vec4<f32>(in.position, 1.0)).xyz;
   out.clipPos  = global.viewProj * vec4<f32>(worldPos, 1.0);
   out.worldPos = worldPos;
