@@ -3,6 +3,8 @@ export const SPHERE_WGSL = /* wgsl */ `
 // 프레임 당 한 번 세팅:
 // 카메라, 시간 등 → 모든 오브젝트에 동일
 // pass.setBindGroup(0, globalBindGroup);  // 한 번
+// cameraRight, cameraUp은 STAR_WGSL에서만 사용중 
+// 카메라가 어느 위치에 있던 카메라를 바라보게 하기 위해 사용중
 struct GlobalUniforms {
   viewProj    : mat4x4<f32>, // 뷰 행렬 x 프로젝션 행렬
   cameraPos   : vec3<f32>, // 카메라 월드 좌표 (조명 계산용)
@@ -100,9 +102,17 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let diffuse  = max(dot(in.normal, lightDir), 0.08);
 
   let litColor   = obj.color * diffuse;
+  // mix(a, b, t) = a * (1 - t) + b * t
+  // 태양의 경우 emissive = 1.0이므로 
+  // emissive는 0 or 1이므로 조건문을 써도된다고 생각할 수 있으나 
+  // GPU는 수천 개의 픽셀을 동시에 처리하는데, 같은 그룹의 픽셀들은 동일한 명령을 실행해야 하기 때문
+  // finalColor = obj.color
   let finalColor = mix(litColor, obj.color, obj.emissive);
 
   let viewDir = normalize(global.cameraPos - in.worldPos);
+  // 정면 픽셀: dot = 1 -> rim = 0 -> 글로우 없음 
+  // 가장자리 픽셀: dot = 0 -> rim = 1 -> 글로우 최대
+  // 뒷면 픽셀: dot < 0 -> max로 클램핑 -> rim = 1 
   let rim     = 1.0 - max(dot(in.normal, viewDir), 0.0);
   let rimGlow = obj.glowColor * pow(rim, 3.0) * obj.emissive * 2.0;
 
@@ -188,9 +198,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let alpha = obj.color.x
             * smoothstep(0.0, 0.15, in.uv.x)
             * smoothstep(1.0, 0.85, in.uv.x);
+  // band: 링의 표면에 줄무늬 패턴을 만드는 역할 
   let band  = 0.5 + 0.5 * sin(in.uv.x * 50.0);
   let color = vec3<f32>(0.85, 0.75, 0.55) * (0.7 + 0.3 * band);
-
   let lightDir = normalize(-in.worldPos);
   let lit = max(dot(vec3<f32>(0.0, 1.0, 0.0), lightDir), 0.15);
 
@@ -223,6 +233,7 @@ struct VertexOutput {
 
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 
+// 별을 그리는 사각형의 꼭짓점 좌표
 const QUAD_POS = array<vec2<f32>, 6>(
   vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
   vec2(-1.0, -1.0), vec2(1.0, 1.0),  vec2(-1.0, 1.0)
@@ -244,7 +255,11 @@ fn vs_main(in: VertexInput, @builtin(vertex_index) vIdx: u32) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let dist = length(in.uv - vec2<f32>(0.5));
+  // discard는 WGSL의 내장 문법으로 
+  // fragment shader에서만 사용 가능하며, 해당 픽셀을 완전히 버립니다. 
+  // 사각형 quad를 그렸지만 모서리 부분을 discard해서 원형 별처럼 보이게 되는 원리
   if (dist > 0.5) { discard; }
+  // 별의 중심은 밝고 가장자리로 갈수록 흐려지는 효과
   let alpha = 1.0 - smoothstep(0.1, 0.5, dist);
   return vec4<f32>(in.color * alpha, alpha);
 }
