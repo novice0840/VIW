@@ -24,7 +24,7 @@ export class Renderer {
   private globalBindGroup!: GPUBindGroup;
 
   private chunkMeshes = new Map<string, ChunkMesh>();
-  private world!: World;
+  world!: World;
 
   async init(canvas: HTMLCanvasElement) {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });

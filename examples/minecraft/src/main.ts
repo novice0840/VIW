@@ -1,5 +1,7 @@
 import { Renderer } from './renderer';
 import { Camera } from './camera';
+import { isSolid } from './block';
+import { CHUNK_SIZE } from './world';
 
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -19,6 +21,17 @@ async function main() {
     console.error(e);
     return;
   }
+
+  // Link world to camera and spawn on terrain
+  camera.world = renderer.world;
+  renderer.world.generateAround(camera.position[0], camera.position[2], 1);
+  const spawnX = Math.floor(camera.position[0]);
+  const spawnZ = Math.floor(camera.position[2]);
+  let spawnY = 63;
+  while (spawnY > 0 && !isSolid(renderer.world.getBlock(spawnX, spawnY, spawnZ))) {
+    spawnY--;
+  }
+  camera.position[1] = spawnY + 1 + 1.62; // feet on top of block + eye height
 
   camera.attachEvents(canvas);
 

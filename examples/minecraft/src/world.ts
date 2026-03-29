@@ -226,6 +226,21 @@ export class World {
     return chunk;
   }
 
+  getBlock(wx: number, wy: number, wz: number): BlockType {
+    const bx = Math.floor(wx);
+    const by = Math.floor(wy);
+    const bz = Math.floor(wz);
+    if (by < 0 || by >= WORLD_HEIGHT) return BlockType.Air;
+    const cx = Math.floor(bx / CHUNK_SIZE);
+    const cz = Math.floor(bz / CHUNK_SIZE);
+    const lx = ((bx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((bz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const k = this.key(cx, cz);
+    const chunk = this.chunks.get(k);
+    if (!chunk) return BlockType.Air;
+    return chunk.getBlock(lx, by, lz);
+  }
+
   generateAround(centerX: number, centerZ: number, radius: number) {
     const ccx = Math.floor(centerX / CHUNK_SIZE);
     const ccz = Math.floor(centerZ / CHUNK_SIZE);
