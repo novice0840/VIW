@@ -71,7 +71,7 @@ export class Camera {
       this.yaw -= e.movementX * this.sensitivity;
       this.pitch = Math.max(
         -Math.PI / 2 + 0.01,
-        Math.min(Math.PI / 2 - 0.01, this.pitch + e.movementY * this.sensitivity),
+        Math.min(Math.PI / 2 - 0.01, this.pitch - e.movementY * this.sensitivity),
       );
     });
 
