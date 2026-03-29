@@ -134,11 +134,11 @@ export class Chunk {
             const c = colors.top;
             const n: [number, number, number] = [0, 1, 0];
             verts.push(wx, y + 1, wz, ...n, ...c);
+            verts.push(wx + 1, y + 1, wz + 1, ...n, ...c);
             verts.push(wx + 1, y + 1, wz, ...n, ...c);
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...c);
             verts.push(wx, y + 1, wz, ...n, ...c);
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...c);
             verts.push(wx, y + 1, wz + 1, ...n, ...c);
+            verts.push(wx + 1, y + 1, wz + 1, ...n, ...c);
           }
 
           // -Y (bottom)
@@ -146,11 +146,11 @@ export class Chunk {
             const c = colors.bottom;
             const n: [number, number, number] = [0, -1, 0];
             verts.push(wx, y, wz + 1, ...n, ...c);
+            verts.push(wx + 1, y, wz, ...n, ...c);
             verts.push(wx + 1, y, wz + 1, ...n, ...c);
-            verts.push(wx + 1, y, wz, ...n, ...c);
             verts.push(wx, y, wz + 1, ...n, ...c);
-            verts.push(wx + 1, y, wz, ...n, ...c);
             verts.push(wx, y, wz, ...n, ...c);
+            verts.push(wx + 1, y, wz, ...n, ...c);
           }
 
           // +X (right)
