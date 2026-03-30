@@ -1,7 +1,6 @@
 import { Renderer } from './renderer';
 import { Camera } from './camera';
 import { isSolid } from './block';
-import { CHUNK_SIZE } from './world';
 
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
