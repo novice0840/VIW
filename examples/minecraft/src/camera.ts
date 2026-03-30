@@ -110,6 +110,7 @@ export class Camera {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
+      if (!this.locked) this.keys.clear();
     });
 
     document.addEventListener('mousemove', (e) => {
