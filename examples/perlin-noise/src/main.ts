@@ -1,7 +1,4 @@
-import {
-  fadeOriginal, fadeImproved,
-  noise1d, noise2d, fbm,
-} from './noise';
+import { fadeOriginal, fadeImproved, noise1d, noise2d, fbm } from './noise';
 
 // ─────────────────────────────────────────────
 // 3. 1D Perlin Noise 비교
@@ -23,7 +20,7 @@ function draw1DNoise(canvas: HTMLCanvasElement) {
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(pad, midY);     // 시작점: 왼쪽
+  ctx.moveTo(pad, midY); // 시작점: 왼쪽
   ctx.lineTo(w - pad, midY); // 끝점: 오른쪽
   ctx.stroke();
 
@@ -43,6 +40,7 @@ function draw1DNoise(canvas: HTMLCanvasElement) {
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     for (let px = 0; px <= plotW; px++) {
+      // t = 0 ~ 1
       const t = (px / plotW) * noiseScale;
       const val = noise1d(t, fade);
       const x = pad + px;
