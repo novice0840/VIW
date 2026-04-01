@@ -19,12 +19,12 @@ function draw1DNoise(canvas: HTMLCanvasElement) {
   const plotH = h - 2 * pad;
   const midY = pad + plotH / 2;
 
-  // 0 기준선
+  // 0 기준선 (noise 값 0에 해당하는 캔버스 세로 중앙의 가로선)
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(pad, midY);
-  ctx.lineTo(w - pad, midY);
+  ctx.moveTo(pad, midY);     // 시작점: 왼쪽
+  ctx.lineTo(w - pad, midY); // 끝점: 오른쪽
   ctx.stroke();
 
   // 격자 경계 표시
