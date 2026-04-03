@@ -25,7 +25,7 @@ function draw1DNoise(canvas: HTMLCanvasElement) {
   ctx.stroke();
 
   // 격자 경계 표시
-  const noiseScale = 8;
+  const noiseScale = 15;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   for (let i = 0; i <= noiseScale; i++) {
     const x = pad + (i / noiseScale) * plotW;
@@ -40,10 +40,14 @@ function draw1DNoise(canvas: HTMLCanvasElement) {
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     for (let px = 0; px <= plotW; px++) {
-      // t = 0 ~ 1
+      // t = 0 ~ 8
       const t = (px / plotW) * noiseScale;
       const val = noise1d(t, fade);
       const x = pad + px;
+      // midY: 화면의 중앙 세로 위치
+      // val: noise 값 (-1 ~ 1)
+      // plotH: 캔버스의 실제 세로 픽셀 크기
+      // * 0.45: 캔버스 높이의 45%까지만 진폭을 제한 (꽉 차지 않게 여백 확보)
       const y = midY - val * plotH * 0.45;
       if (px === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
