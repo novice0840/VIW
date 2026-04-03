@@ -76,6 +76,7 @@ export function noise1d(x: number, fade: (t: number) => number): number {
   const xf = x - Math.floor(x); // 격자 간격은 1, xf는 왼쪽 격자점까지의 거리 (0~1)
   const u = fade(xf);
   // xf-1은 오른쪽 격자점까지의 거리 (-1~0)
+  // xf(+, -), xf-1(+, -)를 u의 비율로 보간
   return lerp(grad1d(P[xi], xf), grad1d(P[xi + 1], xf - 1), u);
 }
 
