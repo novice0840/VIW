@@ -70,7 +70,7 @@ export function getGradientDir(ix: number, iy: number): [number, number] {
 
 // 1D Perlin noise (fade 함수를 선택 가능)
 export function noise1d(x: number, fade: (t: number) => number): number {
-  const xi = Math.floor(x) & 255;
+  const xi = Math.floor(x) & 255; // 소수점 버림 후 하위 8비트만 남겨 0~255 범위로 제한
   const xf = x - Math.floor(x);
   const u = fade(xf);
   return lerp(grad1d(P[xi], xf), grad1d(P[xi + 1], xf - 1), u);
@@ -78,8 +78,8 @@ export function noise1d(x: number, fade: (t: number) => number): number {
 
 // 2D Perlin noise (fade 함수를 선택 가능)
 export function noise2d(x: number, y: number, fade: (t: number) => number = fadeImproved): number {
-  const xi = Math.floor(x) & 255;
-  const yi = Math.floor(y) & 255;
+  const xi = Math.floor(x) & 255; // 소수점 버림 후 하위 8비트만 남겨 0~255 범위로 제한
+  const yi = Math.floor(y) & 255; // 소수점 버림 후 하위 8비트만 남겨 0~255 범위로 제한
   const xf = x - Math.floor(x);
   const yf = y - Math.floor(y);
 
