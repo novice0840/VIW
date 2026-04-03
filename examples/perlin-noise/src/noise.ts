@@ -51,6 +51,8 @@ export function grad2d(hash: number, x: number, y: number): number {
 }
 
 // 1D gradient
+// 1D gradient: hash의 최하위 비트로 방향(+/-) 결정 후 거리 x와의 내적 반환
+// (hash & 1) === 0 → +x (오른쪽 방향), 1 → -x (왼쪽 방향)
 function grad1d(hash: number, x: number): number {
   return (hash & 1) === 0 ? x : -x;
 }
