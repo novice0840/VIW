@@ -78,6 +78,7 @@ function draw2DNoise(canvas: HTMLCanvasElement, scale: number) {
 
   for (let py = 0; py < h; py++) {
     for (let px = 0; px < w; px++) {
+      // nx, ny - 0 ~ scale
       const nx = (px / w) * scale;
       const ny = (py / h) * scale;
       const val = noise2d(nx, ny);
