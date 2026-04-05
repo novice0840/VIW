@@ -77,7 +77,9 @@ export function noise1d(x: number, fade: (t: number) => number): number {
   const u = fade(xf);
   // xf-1은 오른쪽 격자점까지의 거리 (-1~0)
   // xf(+, -), xf-1(+, -)를 u의 비율로 보간
-  return lerp(grad1d(P[xi], xf), grad1d(P[xi + 1], xf - 1), u);
+  // xi는 정수 격자를 넘기전까지는 바뀌지 않는다.
+  const result = lerp(grad1d(P[xi], xf), grad1d(P[xi + 1], xf - 1), u);
+  return result;
 }
 
 // 2D Perlin noise (fade 함수를 선택 가능)
