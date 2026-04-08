@@ -70,7 +70,7 @@ function draw1DNoise(canvas: HTMLCanvasElement) {
 // ─────────────────────────────────────────────
 // 4. 2D Perlin Noise
 // ─────────────────────────────────────────────
-function draw2DNoise(canvas: HTMLCanvasElement, scale: number) {
+function draw2DNoise(canvas: HTMLCanvasElement, scale: number): void {
   const ctx = canvas.getContext('2d')!;
   const w = canvas.width;
   const h = canvas.height;
@@ -84,6 +84,7 @@ function draw2DNoise(canvas: HTMLCanvasElement, scale: number) {
       const val = noise2d(nx, ny);
       const bright = Math.floor((val + 1) * 0.5 * 255);
       const idx = (py * w + px) * 4;
+      // R, G, B가 같으면 어떤 색도 치우치지 않아서 항상 검정~흰색 사이의 회색이 됩니다.
       imageData.data[idx] = bright;
       imageData.data[idx + 1] = bright;
       imageData.data[idx + 2] = bright;
