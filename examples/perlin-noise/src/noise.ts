@@ -47,6 +47,7 @@ export function grad2d(hash: number, x: number, y: number): number {
   const h = hash & 3;
   const u = h < 2 ? x : -x;
   const v = h === 0 || h === 3 ? y : -y;
+  // return = x + u or x - y or -x + y or -x-y
   return u + v;
 }
 
