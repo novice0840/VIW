@@ -93,16 +93,47 @@ export function noise2d(x: number, y: number, fade: (t: number) => number = fade
   const u = fade(xf);
   const v = fade(yf);
 
+  // 하나의 셀 안에서는 아래 4개의 값은 변하지 않는다 .
   const aa = P[P[xi] + yi];
   const ab = P[P[xi] + yi + 1];
   const ba = P[P[xi + 1] + yi];
   const bb = P[P[xi + 1] + yi + 1];
 
-  return lerp(
-    lerp(grad2d(aa, xf, yf), grad2d(ba, xf - 1, yf), u),
-    lerp(grad2d(ab, xf, yf - 1), grad2d(bb, xf - 1, yf - 1), u),
+  // xf: 왼쪽 격자점에서의 거리 (0 -> 1)
+  // xf - 1: 오른쪽 격자점에서의 거리 (-1 -> 0)
+  // const result = lerp(
+  //   lerp(grad2d(aa, xf, yf), grad2d(ba, xf - 1, yf), u),
+  //   lerp(grad2d(ab, xf, yf - 1), grad2d(bb, xf - 1, yf - 1), u),
+  //   v,
+  // );
+
+  // -1을 빼면 격자 경계에서 값이 불연속이 되기 때문입니다.
+  // 원래 코드에서 xf - 1, yf - 1의 의미는:
+
+  // xf = 왼쪽 격자점에서의 거리 (0→1)
+  // xf - 1 = 오른쪽 격자점에서의 거리 (-1→0)
+  // 격자 경계(x가 정수)에서 확인하면:
+
+  // 원래 코드 (xf-1 있음):
+
+  // 왼쪽 셀의 오른쪽 끝: grad2d(ba, 1, ...) 과 grad2d(ba, 1-1=0, ...)
+  // 오른쪽 셀의 왼쪽 끝: grad2d(ba, 0, ...) 과 grad2d(ba, 0-1=-1, ...)
+  // → 경계에서 같은 값 → 연속
+  // 수정 코드 (xf-1 제거):
+
+  // 왼쪽 셀의 오른쪽 끝: grad2d(ba, 1, ...)
+  // 오른쪽 셀의 왼쪽 끝: grad2d(ba, 0, ...)
+  // → 경계에서 다른 값 → 불연속 → 선이 보임
+  // xf - 1은 "오른쪽 격자점 기준으로 본 거리" 이고, 이게 있어야 인접 셀끼리 경계에서 값이 맞아떨어집니다.
+  const result = lerp(
+    lerp(grad2d(aa, xf, yf), grad2d(ba, xf, yf), u),
+    lerp(grad2d(ab, xf, yf), grad2d(bb, xf, yf), u),
     v,
   );
+
+  console.log('x', x, 'y', y, 'result', result, 'aa', aa, 'ab', ab, 'ba', ba, 'bb', bb);
+
+  return result;
 }
 
 // fBm (Fractal Brownian Motion)
