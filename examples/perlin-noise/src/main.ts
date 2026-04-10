@@ -82,6 +82,8 @@ function draw2DNoise(canvas: HTMLCanvasElement, scale: number): void {
       const nx = (px / w) * scale;
       const ny = (py / h) * scale;
       const val = noise2d(nx, ny);
+      // val (-1 ~ 1)
+      // bright (0 ~ 255)
       const bright = Math.floor((val + 1) * 0.5 * 255);
       const idx = (py * w + px) * 4;
       // R, G, B가 같으면 어떤 색도 치우치지 않아서 항상 검정~흰색 사이의 회색이 됩니다.
