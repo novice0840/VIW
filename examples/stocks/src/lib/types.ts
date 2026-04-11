@@ -7,6 +7,12 @@ export interface StockRecord {
   volume: number;
 }
 
+export interface FutureReturn {
+  date: string | null;
+  price: number | null;
+  returnPct: number | null;
+}
+
 export interface DrawdownEvent {
   date: string;
   close: number;
@@ -14,7 +20,7 @@ export interface DrawdownEvent {
   peakPrice: number;
   drawdownPct: number;
   thresholdPct: number;
-  oneYearLaterDate: string | null;
-  oneYearLaterPrice: number | null;
-  oneYearReturn: number | null;
+  after1y: FutureReturn;
+  after3y: FutureReturn;
+  after5y: FutureReturn;
 }

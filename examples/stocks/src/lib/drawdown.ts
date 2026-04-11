@@ -1,16 +1,17 @@
-import { StockRecord, DrawdownEvent } from "./types";
+import { StockRecord, DrawdownEvent, FutureReturn } from "./types";
 
-function addOneYear(dateStr: string): string {
+function addYears(dateStr: string, years: number): string {
   const d = new Date(dateStr);
-  d.setFullYear(d.getFullYear() + 1);
+  d.setFullYear(d.getFullYear() + years);
   return d.toISOString().slice(0, 10);
 }
 
-function findOneYearLater(
+function findRecordAfter(
   data: StockRecord[],
-  fromDate: string
-): StockRecord | null {
-  const targetDate = addOneYear(fromDate);
+  fromDate: string,
+  years: number
+): FutureReturn {
+  const targetDate = addYears(fromDate, years);
 
   let lo = 0;
   let hi = data.length - 1;
@@ -23,10 +24,20 @@ function findOneYearLater(
     }
   }
 
-  if (lo >= data.length) return null;
-  if (data[lo].date < targetDate) return null;
+  if (lo >= data.length || data[lo].date < targetDate) {
+    return { date: null, price: null, returnPct: null };
+  }
 
-  return data[lo];
+  const record = data[lo];
+  const fromRecord = data.find((r) => r.date === fromDate)!;
+  return {
+    date: record.date,
+    price: record.close,
+    returnPct:
+      Math.round(
+        ((record.close - fromRecord.close) / fromRecord.close) * 10000
+      ) / 100,
+  };
 }
 
 export function computeDrawdownEvents(data: StockRecord[]): DrawdownEvent[] {
@@ -52,8 +63,6 @@ export function computeDrawdownEvents(data: StockRecord[]): DrawdownEvent[] {
 
       triggeredThresholds.add(threshold);
 
-      const later = findOneYearLater(sorted, record.date);
-
       events.push({
         date: record.date,
         close: record.close,
@@ -61,12 +70,9 @@ export function computeDrawdownEvents(data: StockRecord[]): DrawdownEvent[] {
         peakPrice,
         drawdownPct: Math.round(drawdownPct * 100) / 100,
         thresholdPct: threshold,
-        oneYearLaterDate: later?.date ?? null,
-        oneYearLaterPrice: later?.close ?? null,
-        oneYearReturn: later
-          ? Math.round(((later.close - record.close) / record.close) * 10000) /
-            100
-          : null,
+        after1y: findRecordAfter(sorted, record.date, 1),
+        after3y: findRecordAfter(sorted, record.date, 3),
+        after5y: findRecordAfter(sorted, record.date, 5),
       });
     }
   }
