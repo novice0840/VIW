@@ -6,13 +6,7 @@ function addYears(dateStr: string, years: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function findRecordAfter(
-  data: StockRecord[],
-  fromDate: string,
-  years: number
-): FutureReturn {
-  const targetDate = addYears(fromDate, years);
-
+function binarySearchDate(data: StockRecord[], targetDate: string): number {
   let lo = 0;
   let hi = data.length - 1;
   while (lo < hi) {
@@ -23,32 +17,52 @@ function findRecordAfter(
       hi = mid;
     }
   }
+  return lo;
+}
 
-  if (lo >= data.length || data[lo].date < targetDate) {
+function findRecordAfter(
+  data: StockRecord[],
+  fromDate: string,
+  years: number
+): FutureReturn {
+  const targetDate = addYears(fromDate, years);
+  const idx = binarySearchDate(data, targetDate);
+
+  if (idx >= data.length || data[idx].date < targetDate) {
     return { date: null, price: null, returnPct: null };
   }
 
-  const record = data[lo];
-  const fromRecord = data.find((r) => r.date === fromDate)!;
+  const fromIdx = binarySearchDate(data, fromDate);
+  if (fromIdx >= data.length || data[fromIdx].date !== fromDate) {
+    return { date: null, price: null, returnPct: null };
+  }
+
+  const fromClose = data[fromIdx].close;
+  const toClose = data[idx].close;
   return {
-    date: record.date,
-    price: record.close,
-    returnPct:
-      Math.round(
-        ((record.close - fromRecord.close) / fromRecord.close) * 10000
-      ) / 100,
+    date: data[idx].date,
+    price: toClose,
+    returnPct: Math.round(((toClose - fromClose) / fromClose) * 10000) / 100,
   };
 }
 
-export function computeDrawdownEvents(data: StockRecord[]): DrawdownEvent[] {
-  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
+/**
+ * @param reference - 하락 감지 기준 데이터 (QQQ)
+ * @param target - 수익률 계산 대상 데이터 (QLD 또는 QQQ)
+ */
+export function computeDrawdownEvents(
+  reference: StockRecord[],
+  target: StockRecord[]
+): DrawdownEvent[] {
+  const refSorted = [...reference].sort((a, b) => a.date.localeCompare(b.date));
+  const tgtSorted = [...target].sort((a, b) => a.date.localeCompare(b.date));
   const events: DrawdownEvent[] = [];
 
   let peakPrice = 0;
   let peakDate = "";
   const triggeredThresholds = new Set<number>();
 
-  for (const record of sorted) {
+  for (const record of refSorted) {
     if (record.close > peakPrice) {
       peakPrice = record.close;
       peakDate = record.date;
@@ -70,9 +84,9 @@ export function computeDrawdownEvents(data: StockRecord[]): DrawdownEvent[] {
         peakPrice,
         drawdownPct: Math.round(drawdownPct * 100) / 100,
         thresholdPct: threshold,
-        after1y: findRecordAfter(sorted, record.date, 1),
-        after3y: findRecordAfter(sorted, record.date, 3),
-        after5y: findRecordAfter(sorted, record.date, 5),
+        after1y: findRecordAfter(tgtSorted, record.date, 1),
+        after3y: findRecordAfter(tgtSorted, record.date, 3),
+        after5y: findRecordAfter(tgtSorted, record.date, 5),
       });
     }
   }

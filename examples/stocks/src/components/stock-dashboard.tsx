@@ -33,7 +33,7 @@ export function StockDashboard({ tickers }: StockDashboardProps) {
           <h2 className="text-xl font-semibold">{t.label}</h2>
           <SummaryCards data={t.data} events={t.events} />
           <PriceChart data={t.data} />
-          <DrawdownTable events={t.events} thresholds={t.thresholds} />
+          <DrawdownTable events={t.events} thresholds={t.thresholds} ticker={t.ticker} />
         </TabsContent>
       ))}
     </Tabs>
