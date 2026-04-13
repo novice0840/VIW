@@ -16,6 +16,7 @@ import { DrawdownEvent, FutureReturn } from "@/lib/types";
 interface DrawdownTableProps {
   events: DrawdownEvent[];
   thresholds: number[];
+  ticker: string;
 }
 
 function computeStats(events: DrawdownEvent[], key: "after1y" | "after3y" | "after5y") {
@@ -80,7 +81,7 @@ function StatRow({
   );
 }
 
-export function DrawdownTable({ events, thresholds }: DrawdownTableProps) {
+export function DrawdownTable({ events, thresholds, ticker }: DrawdownTableProps) {
   const [checkedThresholds, setCheckedThresholds] = useState<Set<number>>(
     () => new Set(thresholds)
   );
@@ -108,6 +109,11 @@ export function DrawdownTable({ events, thresholds }: DrawdownTableProps) {
     <Card>
       <CardHeader>
         <CardTitle>고점 대비 하락 분석</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          QQQ(Nasdaq-100) 종가 기준으로 고점 대비 N*10% 이상 하락한 시점을 감지하고,
+          해당 시점에서 {ticker}에 투자했을 때 1년/3년/5년 후 수익률을 표시합니다.
+          고점이 갱신되면 임계값이 리셋되어 새로운 하락 사이클을 별도로 감지합니다.
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-4">
