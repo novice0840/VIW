@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "strict": true,
     "types": ["@webgpu/types"],
-    "outDir": "dist"
+    "outDir": "dist",
+    "rootDir": "src"
   },
   "include": ["src"]
 }
