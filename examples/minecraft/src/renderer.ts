@@ -27,7 +27,7 @@ export class Renderer {
   world!: World;
 
   async init(canvas: HTMLCanvasElement) {
-    const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw new Error('No WebGPU adapter');
     this.device = await adapter.requestDevice();
 
