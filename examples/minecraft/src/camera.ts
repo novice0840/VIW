@@ -66,10 +66,10 @@ export class Camera {
     const right = this.getRight();
     let move: Vec3 = [0, 0, 0];
 
-    if (this.keys.has('w')) move = vec3.add(move, forward);
-    if (this.keys.has('s')) move = vec3.sub(move, forward);
-    if (this.keys.has('d')) move = vec3.add(move, right);
-    if (this.keys.has('a')) move = vec3.sub(move, right);
+    if (this.keys.has('KeyW')) move = vec3.add(move, forward);
+    if (this.keys.has('KeyS')) move = vec3.sub(move, forward);
+    if (this.keys.has('KeyD')) move = vec3.add(move, right);
+    if (this.keys.has('KeyA')) move = vec3.sub(move, right);
 
     const len = Math.sqrt(move[0] * move[0] + move[2] * move[2]);
     if (len > 0) {
@@ -84,7 +84,7 @@ export class Camera {
     // Gravity & jump
     const feetY = this.position[1] - this.eyeHeight;
 
-    if (this.keys.has(' ') && this.onGround) {
+    if (this.keys.has('Space') && this.onGround) {
       this.velocityY = this.jumpSpeed;
       this.onGround = false;
     }
@@ -123,11 +123,11 @@ export class Camera {
     });
 
     document.addEventListener('keydown', (e) => {
-      this.keys.add(e.key.toLowerCase());
+      this.keys.add(e.code);
     });
 
     document.addEventListener('keyup', (e) => {
-      this.keys.delete(e.key.toLowerCase());
+      this.keys.delete(e.code);
     });
   }
 }
