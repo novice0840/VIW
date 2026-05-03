@@ -10,7 +10,9 @@ async function main() {
     return;
   }
 
+  // WebGPU API를 직접 다루며 화면에 세계를 그리는 역할
   const renderer = new Renderer();
+  // 1인칭 시점 카메라이자 플레이어 물리 엔진 역할을 동시에 담당
   const camera = new Camera();
 
   try {

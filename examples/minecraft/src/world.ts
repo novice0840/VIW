@@ -209,6 +209,11 @@ export class Chunk {
   }
 }
 
+/**
+ * @descriotion 청크(Chunk)들의 컨네이너
+ * 월드의 지형 데이터를 생성, 저장하고, 렌더링에 필요한 메시 데이터를 만들어주는 역할
+ * 청크(Chunk): 블록 여러 개의 묶음 (CHUNK_SIZE X CHUNK_SIZE X WORLD_HEIGHT)
+ */
 export class World {
   chunks = new Map<string, Chunk>();
 
@@ -226,6 +231,13 @@ export class World {
     return chunk;
   }
 
+  /**
+   * @description 월드 좌표를 입력 받아 해당 블록의 타입을 반환하는 함수
+   * @param wx
+   * @param wy
+   * @param wz
+   * @returns BlockType
+   */
   getBlock(wx: number, wy: number, wz: number): BlockType {
     const bx = Math.floor(wx);
     const by = Math.floor(wy);
