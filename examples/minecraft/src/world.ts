@@ -233,18 +233,20 @@ export class World {
 
   /**
    * @description 월드 좌표를 입력 받아 해당 블록의 타입을 반환하는 함수
-   * @param wx
-   * @param wy
-   * @param wz
    * @returns BlockType
    */
   getBlock(wx: number, wy: number, wz: number): BlockType {
+    // world coordinate(실수) -> block index(정수)로 변환
     const bx = Math.floor(wx);
     const by = Math.floor(wy);
     const bz = Math.floor(wz);
     if (by < 0 || by >= WORLD_HEIGHT) return BlockType.Air;
+    // chunk index 추출
     const cx = Math.floor(bx / CHUNK_SIZE);
     const cz = Math.floor(bz / CHUNK_SIZE);
+    // lx, ly: local coordinate (청크 내부 지역 좌표)
+    // (bx,by % CHUNK_SIZE) + CHUNK_SIZE) -> JavaScript의 % 연산자는 수학적인 modulo가 아니라 부호를 그대로 유지하는
+    // remainer이기 때문에 음수를 0 ~ 15 로 변경하기 위한 작업
     const lx = ((bx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     const lz = ((bz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     const k = this.key(cx, cz);
