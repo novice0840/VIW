@@ -44,20 +44,6 @@ export class Camera {
     return mat4.perspective(this.fov, aspect, this.near, this.far);
   }
 
-  private isSolidAt(x: number, y: number, z: number): boolean {
-    if (!this.world) return false;
-    return isSolid(this.world.getBlock(x, y, z));
-  }
-
-  private groundHeight(x: number, z: number, startY: number): number {
-    const bx = Math.floor(x);
-    const bz = Math.floor(z);
-    for (let y = Math.floor(startY); y >= 0; y--) {
-      if (this.isSolidAt(bx, y, bz)) return y + 1;
-    }
-    return 0;
-  }
-
   update(dt: number) {
     if (!this.locked) return;
 
@@ -129,5 +115,19 @@ export class Camera {
     document.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
     });
+  }
+
+  private isSolidAt(x: number, y: number, z: number): boolean {
+    if (!this.world) return false;
+    return isSolid(this.world.getBlock(x, y, z));
+  }
+
+  private groundHeight(x: number, z: number, startY: number): number {
+    const bx = Math.floor(x);
+    const bz = Math.floor(z);
+    for (let y = Math.floor(startY); y >= 0; y--) {
+      if (this.isSolidAt(bx, y, bz)) return y + 1;
+    }
+    return 0;
   }
 }

@@ -51,6 +51,82 @@ export class Renderer {
     this.createDepthTexture(w, h);
   }
 
+  render(camera: Camera, _time: number) {
+    const view = camera.getViewMatrix();
+    const proj = camera.getProjectionMatrix(this.aspect);
+    const viewProj = mat4.multiply(proj, view);
+
+    // Sun direction (slightly angled)
+    const sunDir = [0.4, 0.8, 0.3];
+    const sunLen = Math.sqrt(sunDir[0] ** 2 + sunDir[1] ** 2 + sunDir[2] ** 2);
+    sunDir[0] /= sunLen; sunDir[1] /= sunLen; sunDir[2] /= sunLen;
+
+    // Fog color matches sky bottom
+    const fogColor = [0.70, 0.82, 0.95];
+
+    // Write global uniforms
+    const globalData = new Float32Array(GLOBAL_UNIFORM_SIZE / 4);
+    globalData.set(viewProj, 0);          // 0-15: viewProj
+    globalData.set(camera.position, 16);  // 16-18: cameraPos
+    // 19: pad
+    globalData.set(sunDir, 20);           // 20-22: sunDir
+    // 23: pad
+    globalData.set(fogColor, 24);         // 24-26: fogColor
+    globalData[27] = 0.008;              // fogDensity
+    this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
+
+    // Generate chunks around camera
+    const renderDistance = 4;
+    this.world.generateAround(camera.position[0], camera.position[2], renderDistance);
+
+    // Begin render pass
+    const encoder = this.device.createCommandEncoder();
+    const textureView = this.context.getCurrentTexture().createView();
+    const pass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: textureView,
+          clearValue: { r: 0.70, g: 0.82, b: 0.95, a: 1 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+      depthStencilAttachment: {
+        view: this.depthTexture.createView(),
+        depthClearValue: 1.0,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      },
+    });
+
+    // Sky
+    pass.setPipeline(this.skyPipeline);
+    pass.draw(3);
+
+    // Blocks
+    pass.setPipeline(this.blockPipeline);
+    pass.setBindGroup(0, this.globalBindGroup);
+
+    const ccx = Math.floor(camera.position[0] / CHUNK_SIZE);
+    const ccz = Math.floor(camera.position[2] / CHUNK_SIZE);
+
+    for (let dx = -renderDistance; dx <= renderDistance; dx++) {
+      for (let dz = -renderDistance; dz <= renderDistance; dz++) {
+        const cx = ccx + dx;
+        const cz = ccz + dz;
+        const key = `${cx},${cz}`;
+        const mesh = this.getOrCreateChunkMesh(key, cx, cz);
+        if (mesh) {
+          pass.setVertexBuffer(0, mesh.buffer);
+          pass.draw(mesh.vertexCount);
+        }
+      }
+    }
+
+    pass.end();
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   private createDepthTexture(w: number, h: number) {
     this.depthTexture = this.device.createTexture({
       size: [w, h],
@@ -147,81 +223,5 @@ export class Renderer {
     mesh = { buffer, vertexCount };
     this.chunkMeshes.set(key, mesh);
     return mesh;
-  }
-
-  render(camera: Camera, _time: number) {
-    const view = camera.getViewMatrix();
-    const proj = camera.getProjectionMatrix(this.aspect);
-    const viewProj = mat4.multiply(proj, view);
-
-    // Sun direction (slightly angled)
-    const sunDir = [0.4, 0.8, 0.3];
-    const sunLen = Math.sqrt(sunDir[0] ** 2 + sunDir[1] ** 2 + sunDir[2] ** 2);
-    sunDir[0] /= sunLen; sunDir[1] /= sunLen; sunDir[2] /= sunLen;
-
-    // Fog color matches sky bottom
-    const fogColor = [0.70, 0.82, 0.95];
-
-    // Write global uniforms
-    const globalData = new Float32Array(GLOBAL_UNIFORM_SIZE / 4);
-    globalData.set(viewProj, 0);          // 0-15: viewProj
-    globalData.set(camera.position, 16);  // 16-18: cameraPos
-    // 19: pad
-    globalData.set(sunDir, 20);           // 20-22: sunDir
-    // 23: pad
-    globalData.set(fogColor, 24);         // 24-26: fogColor
-    globalData[27] = 0.008;              // fogDensity
-    this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
-
-    // Generate chunks around camera
-    const renderDistance = 4;
-    this.world.generateAround(camera.position[0], camera.position[2], renderDistance);
-
-    // Begin render pass
-    const encoder = this.device.createCommandEncoder();
-    const textureView = this.context.getCurrentTexture().createView();
-    const pass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: textureView,
-          clearValue: { r: 0.70, g: 0.82, b: 0.95, a: 1 },
-          loadOp: 'clear',
-          storeOp: 'store',
-        },
-      ],
-      depthStencilAttachment: {
-        view: this.depthTexture.createView(),
-        depthClearValue: 1.0,
-        depthLoadOp: 'clear',
-        depthStoreOp: 'store',
-      },
-    });
-
-    // Sky
-    pass.setPipeline(this.skyPipeline);
-    pass.draw(3);
-
-    // Blocks
-    pass.setPipeline(this.blockPipeline);
-    pass.setBindGroup(0, this.globalBindGroup);
-
-    const ccx = Math.floor(camera.position[0] / CHUNK_SIZE);
-    const ccz = Math.floor(camera.position[2] / CHUNK_SIZE);
-
-    for (let dx = -renderDistance; dx <= renderDistance; dx++) {
-      for (let dz = -renderDistance; dz <= renderDistance; dz++) {
-        const cx = ccx + dx;
-        const cz = ccz + dz;
-        const key = `${cx},${cz}`;
-        const mesh = this.getOrCreateChunkMesh(key, cx, cz);
-        if (mesh) {
-          pass.setVertexBuffer(0, mesh.buffer);
-          pass.draw(mesh.vertexCount);
-        }
-      }
-    }
-
-    pass.end();
-    this.device.queue.submit([encoder.finish()]);
   }
 }

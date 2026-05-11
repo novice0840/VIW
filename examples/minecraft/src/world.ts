@@ -16,10 +16,6 @@ export class Chunk {
     this.generate();
   }
 
-  private idx(x: number, y: number, z: number): number {
-    return y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
-  }
-
   /**
    * @description 로컬 좌표 x,y,z를 받아 해당 위치의 블록 종류를 반환하는 함수
    */
@@ -28,88 +24,6 @@ export class Chunk {
       return BlockType.Air;
     }
     return this.blocks[this.idx(x, y, z)];
-  }
-
-  private setBlock(x: number, y: number, z: number, type: BlockType) {
-    this.blocks[this.idx(x, y, z)] = type;
-  }
-
-  private generate() {
-    const wx = this.cx * CHUNK_SIZE;
-    const wz = this.cz * CHUNK_SIZE;
-
-    for (let x = 0; x < CHUNK_SIZE; x++) {
-      for (let z = 0; z < CHUNK_SIZE; z++) {
-        const worldX = wx + x;
-        const worldZ = wz + z;
-
-        // Terrain height using fractal Brownian motion
-        const baseHeight = fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
-        const height = Math.floor(SEA_LEVEL + baseHeight * 18);
-        const clampedHeight = Math.max(1, Math.min(WORLD_HEIGHT - 1, height));
-
-        for (let y = 0; y < WORLD_HEIGHT; y++) {
-          if (y === 0) {
-            this.setBlock(x, y, z, BlockType.Stone);
-          } else if (y < clampedHeight - 4) {
-            this.setBlock(x, y, z, BlockType.Stone);
-          } else if (y < clampedHeight - 1) {
-            this.setBlock(x, y, z, BlockType.Dirt);
-          } else if (y === clampedHeight - 1) {
-            if (clampedHeight > SEA_LEVEL + 12) {
-              this.setBlock(x, y, z, BlockType.Snow);
-            } else if (clampedHeight <= SEA_LEVEL + 1) {
-              this.setBlock(x, y, z, BlockType.Sand);
-            } else {
-              this.setBlock(x, y, z, BlockType.Grass);
-            }
-          } else if (y < SEA_LEVEL) {
-            this.setBlock(x, y, z, BlockType.Water);
-          }
-        }
-
-        // Trees on grass above sea level
-        if (
-          clampedHeight > SEA_LEVEL + 2 &&
-          clampedHeight < SEA_LEVEL + 10 &&
-          this.getBlock(x, clampedHeight - 1, z) === BlockType.Grass
-        ) {
-          const treeSeed = Math.abs(Math.sin(worldX * 12.9898 + worldZ * 78.233) * 43758.5453) % 1;
-          if (treeSeed < 0.02 && x > 2 && x < CHUNK_SIZE - 3 && z > 2 && z < CHUNK_SIZE - 3) {
-            this.placeTree(x, clampedHeight, z);
-          }
-        }
-      }
-    }
-  }
-
-  private placeTree(x: number, y: number, z: number) {
-    const trunkHeight = 4 + Math.floor(Math.random() * 2);
-
-    for (let i = 0; i < trunkHeight; i++) {
-      if (y + i < WORLD_HEIGHT) {
-        this.setBlock(x, y + i, z, BlockType.Wood);
-      }
-    }
-
-    const leafStart = y + trunkHeight - 2;
-    const leafEnd = y + trunkHeight + 1;
-    for (let ly = leafStart; ly <= leafEnd; ly++) {
-      const radius = ly < leafEnd ? 2 : 1;
-      for (let lx = -radius; lx <= radius; lx++) {
-        for (let lz = -radius; lz <= radius; lz++) {
-          if (lx === 0 && lz === 0 && ly < y + trunkHeight) continue;
-          if (Math.abs(lx) === radius && Math.abs(lz) === radius && Math.random() > 0.5) continue;
-          const bx = x + lx;
-          const bz = z + lz;
-          if (bx >= 0 && bx < CHUNK_SIZE && bz >= 0 && bz < CHUNK_SIZE && ly < WORLD_HEIGHT) {
-            if (this.getBlock(bx, ly, bz) === BlockType.Air) {
-              this.setBlock(bx, ly, bz, BlockType.Leaves);
-            }
-          }
-        }
-      }
-    }
   }
 
   buildMesh(): { vertices: Float32Array; vertexCount: number } {
@@ -210,6 +124,92 @@ export class Chunk {
     const vertices = new Float32Array(verts);
     return { vertices, vertexCount: verts.length / 9 };
   }
+
+  private idx(x: number, y: number, z: number): number {
+    return y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
+  }
+
+  private setBlock(x: number, y: number, z: number, type: BlockType) {
+    this.blocks[this.idx(x, y, z)] = type;
+  }
+
+  private generate() {
+    const wx = this.cx * CHUNK_SIZE;
+    const wz = this.cz * CHUNK_SIZE;
+
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      for (let z = 0; z < CHUNK_SIZE; z++) {
+        const worldX = wx + x;
+        const worldZ = wz + z;
+
+        // Terrain height using fractal Brownian motion
+        const baseHeight = fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
+        const height = Math.floor(SEA_LEVEL + baseHeight * 18);
+        const clampedHeight = Math.max(1, Math.min(WORLD_HEIGHT - 1, height));
+
+        for (let y = 0; y < WORLD_HEIGHT; y++) {
+          if (y === 0) {
+            this.setBlock(x, y, z, BlockType.Stone);
+          } else if (y < clampedHeight - 4) {
+            this.setBlock(x, y, z, BlockType.Stone);
+          } else if (y < clampedHeight - 1) {
+            this.setBlock(x, y, z, BlockType.Dirt);
+          } else if (y === clampedHeight - 1) {
+            if (clampedHeight > SEA_LEVEL + 12) {
+              this.setBlock(x, y, z, BlockType.Snow);
+            } else if (clampedHeight <= SEA_LEVEL + 1) {
+              this.setBlock(x, y, z, BlockType.Sand);
+            } else {
+              this.setBlock(x, y, z, BlockType.Grass);
+            }
+          } else if (y < SEA_LEVEL) {
+            this.setBlock(x, y, z, BlockType.Water);
+          }
+        }
+
+        // Trees on grass above sea level
+        if (
+          clampedHeight > SEA_LEVEL + 2 &&
+          clampedHeight < SEA_LEVEL + 10 &&
+          this.getBlock(x, clampedHeight - 1, z) === BlockType.Grass
+        ) {
+          const treeSeed = Math.abs(Math.sin(worldX * 12.9898 + worldZ * 78.233) * 43758.5453) % 1;
+          if (treeSeed < 0.02 && x > 2 && x < CHUNK_SIZE - 3 && z > 2 && z < CHUNK_SIZE - 3) {
+            this.placeTree(x, clampedHeight, z);
+          }
+        }
+      }
+    }
+  }
+
+  private placeTree(x: number, y: number, z: number) {
+    const trunkHeight = 4 + Math.floor(Math.random() * 2);
+
+    for (let i = 0; i < trunkHeight; i++) {
+      if (y + i < WORLD_HEIGHT) {
+        this.setBlock(x, y + i, z, BlockType.Wood);
+      }
+    }
+
+    const leafStart = y + trunkHeight - 2;
+    const leafEnd = y + trunkHeight + 1;
+    for (let ly = leafStart; ly <= leafEnd; ly++) {
+      const radius = ly < leafEnd ? 2 : 1;
+      for (let lx = -radius; lx <= radius; lx++) {
+        for (let lz = -radius; lz <= radius; lz++) {
+          if (lx === 0 && lz === 0 && ly < y + trunkHeight) continue;
+          if (Math.abs(lx) === radius && Math.abs(lz) === radius && Math.random() > 0.5) continue;
+          const bx = x + lx;
+          const bz = z + lz;
+          if (bx >= 0 && bx < CHUNK_SIZE && bz >= 0 && bz < CHUNK_SIZE && ly < WORLD_HEIGHT) {
+            if (this.getBlock(bx, ly, bz) === BlockType.Air) {
+              this.setBlock(bx, ly, bz, BlockType.Leaves);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -219,10 +219,6 @@ export class Chunk {
  */
 export class World {
   chunks = new Map<string, Chunk>();
-
-  private key(cx: number, cz: number): string {
-    return `${cx},${cz}`;
-  }
 
   getChunk(cx: number, cz: number): Chunk {
     const k = this.key(cx, cz);
@@ -272,5 +268,9 @@ export class World {
         this.getChunk(ccx + dx, ccz + dz);
       }
     }
+  }
+
+  private key(cx: number, cz: number): string {
+    return `${cx},${cz}`;
   }
 }
