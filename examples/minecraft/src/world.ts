@@ -26,6 +26,9 @@ export class Chunk {
     return this.blocks[this.idx(x, y, z)];
   }
 
+  /**
+   * @description 청크의 블록 데이터를 GPU가 그릴 수 있는 버텍스 배열로 변환하는 함수
+   */
   buildMesh(): { vertices: Float32Array; vertexCount: number } {
     const verts: number[] = [];
 
@@ -50,6 +53,7 @@ export class Chunk {
           if (isTransparent(this.getBlock(x, y + 1, z))) {
             const c = colors.top;
             const n: [number, number, number] = [0, 1, 0];
+            // vertex 6개로 삼각형 2개를 만들어 사각형 1개를 채우는 로직
             verts.push(wx, y + 1, wz, ...n, ...c);
             verts.push(wx + 1, y + 1, wz + 1, ...n, ...c);
             verts.push(wx + 1, y + 1, wz, ...n, ...c);
@@ -143,6 +147,9 @@ export class Chunk {
         const worldZ = wz + z;
 
         // Terrain height using fractal Brownian motion
+        // baseHeight: fBm이 반환한 원시 노이즈 값
+        // height: 노이즈를 실제 블록 높이로 변환
+        // clampedHeight: 유효 범위로 제한
         const baseHeight = fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
         const height = Math.floor(SEA_LEVEL + baseHeight * 18);
         const clampedHeight = Math.max(1, Math.min(WORLD_HEIGHT - 1, height));
