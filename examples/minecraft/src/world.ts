@@ -20,6 +20,9 @@ export class Chunk {
     return y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
   }
 
+  /**
+   * @description 로컬 좌표 x,y,z를 받아 해당 위치의 블록 종류를 반환하는 함수
+   */
   getBlock(x: number, y: number, z: number): BlockType {
     if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= WORLD_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
       return BlockType.Air;
@@ -245,7 +248,7 @@ export class World {
     const cx = Math.floor(bx / CHUNK_SIZE);
     const cz = Math.floor(bz / CHUNK_SIZE);
     // lx, ly: local coordinate (청크 내부 지역 좌표)
-    // (bx,by % CHUNK_SIZE) + CHUNK_SIZE) -> JavaScript의 % 연산자는 수학적인 modulo가 아니라 부호를 그대로 유지하는
+    // (bx,by % CHUNK_SIZE) + CHUNK_SIZE): JavaScript의 % 연산자는 수학적인 modulo가 아니라 부호를 그대로 유지하는
     // remainer이기 때문에 음수를 0 ~ 15 로 변경하기 위한 작업
     const lx = ((bx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     const lz = ((bz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
@@ -255,6 +258,11 @@ export class World {
     return chunk.getBlock(lx, by, lz);
   }
 
+  /**
+   * @description centerX, centerZ 좌표 주위의 청크를 생성하는 함수
+   *
+   * (radius×2 + 1)²개의 chunk가 생성된다.
+   */
   generateAround(centerX: number, centerZ: number, radius: number) {
     const ccx = Math.floor(centerX / CHUNK_SIZE);
     const ccz = Math.floor(centerZ / CHUNK_SIZE);
