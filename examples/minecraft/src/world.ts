@@ -162,9 +162,9 @@ export class Chunk {
           } else if (y < clampedHeight - 1) {
             this.setBlock(x, y, z, BlockType.Dirt);
           } else if (y === clampedHeight - 1) {
-            if (clampedHeight > SEA_LEVEL + 12) {
+            if (clampedHeight > SEA_LEVEL + 1) {
               this.setBlock(x, y, z, BlockType.Snow);
-            } else if (clampedHeight <= SEA_LEVEL + 1) {
+            } else if (clampedHeight <= SEA_LEVEL - 2) {
               this.setBlock(x, y, z, BlockType.Sand);
             } else {
               this.setBlock(x, y, z, BlockType.Grass);
