@@ -37,7 +37,6 @@ main.ts (진입점)
   - 바닥(Y=0): Stone (bedrock)
   - 중간 층: Dirt
   - 상단: Grass(중간 고도), Sand(해수면), Snow(고도 >32)
-  - 수면 아래: Water
 - **나무**는 Grass 위에 2% 확률로 시드 기반 랜덤 배치
 - 시드 기반이라 같은 좌표는 항상 같은 지형
 
@@ -92,3 +91,7 @@ npm run dev
 | Shift | 비행 모드 |
 | Mouse | 시점 회전 |
 | ESC | 포인터 잠금 해제 |
+
+## TODO
+
+- [ ] 물 블록 추가 (반투명 블록으로 구현 — 별도 렌더 패스 + alpha blending)

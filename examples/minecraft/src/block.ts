@@ -4,7 +4,6 @@ export const enum BlockType {
   Dirt = 2,
   Stone = 3,
   Sand = 4,
-  Water = 5,
   Wood = 6,
   Leaves = 7,
   Snow = 8,
@@ -39,11 +38,6 @@ export const BLOCK_COLORS: Record<number, BlockColors> = {
     side: [0.82, 0.78, 0.58],
     bottom: [0.78, 0.74, 0.54],
   },
-  [BlockType.Water]: {
-    top: [0.20, 0.40, 0.75],
-    side: [0.18, 0.35, 0.70],
-    bottom: [0.15, 0.30, 0.65],
-  },
   [BlockType.Wood]: {
     top: [0.60, 0.45, 0.25],
     side: [0.45, 0.30, 0.15],
@@ -62,9 +56,9 @@ export const BLOCK_COLORS: Record<number, BlockColors> = {
 };
 
 export function isTransparent(block: BlockType): boolean {
-  return block === BlockType.Air || block === BlockType.Water;
+  return block === BlockType.Air;
 }
 
 export function isSolid(block: BlockType): boolean {
-  return block !== BlockType.Air && block !== BlockType.Water;
+  return block !== BlockType.Air;
 }

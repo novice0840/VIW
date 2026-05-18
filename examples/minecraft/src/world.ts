@@ -37,7 +37,6 @@ export class Chunk {
         for (let x = 0; x < CHUNK_SIZE; x++) {
           const block = this.getBlock(x, y, z);
           if (block === BlockType.Air) continue;
-          if (block === BlockType.Water) continue; // skip water mesh for now
 
           const colors = BLOCK_COLORS[block];
           if (!colors) continue;
@@ -169,8 +168,6 @@ export class Chunk {
             } else {
               this.setBlock(x, y, z, BlockType.Grass);
             }
-          } else if (y < SEA_LEVEL) {
-            this.setBlock(x, y, z, BlockType.Water);
           }
         }
 
