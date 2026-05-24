@@ -7,4 +7,4 @@
 - [ ] noise.ts
 - [ ] renderer.ts
 - [ ] shader.ts
-- [ ] world.ts
+- [x] world.ts
