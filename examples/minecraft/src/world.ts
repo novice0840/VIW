@@ -171,49 +171,10 @@ export class Chunk {
           }
         }
 
-        // Trees on grass above sea level
-        if (
-          clampedHeight > SEA_LEVEL + 2 &&
-          clampedHeight < SEA_LEVEL + 10 &&
-          this.getBlock(x, clampedHeight - 1, z) === BlockType.Grass
-        ) {
-          const treeSeed = Math.abs(Math.sin(worldX * 12.9898 + worldZ * 78.233) * 43758.5453) % 1;
-          if (treeSeed < 0.02 && x > 2 && x < CHUNK_SIZE - 3 && z > 2 && z < CHUNK_SIZE - 3) {
-            this.placeTree(x, clampedHeight, z);
-          }
-        }
       }
     }
   }
 
-  private placeTree(x: number, y: number, z: number) {
-    const trunkHeight = 4 + Math.floor(Math.random() * 2);
-
-    for (let i = 0; i < trunkHeight; i++) {
-      if (y + i < WORLD_HEIGHT) {
-        this.setBlock(x, y + i, z, BlockType.Wood);
-      }
-    }
-
-    const leafStart = y + trunkHeight - 2;
-    const leafEnd = y + trunkHeight + 1;
-    for (let ly = leafStart; ly <= leafEnd; ly++) {
-      const radius = ly < leafEnd ? 2 : 1;
-      for (let lx = -radius; lx <= radius; lx++) {
-        for (let lz = -radius; lz <= radius; lz++) {
-          if (lx === 0 && lz === 0 && ly < y + trunkHeight) continue;
-          if (Math.abs(lx) === radius && Math.abs(lz) === radius && Math.random() > 0.5) continue;
-          const bx = x + lx;
-          const bz = z + lz;
-          if (bx >= 0 && bx < CHUNK_SIZE && bz >= 0 && bz < CHUNK_SIZE && ly < WORLD_HEIGHT) {
-            if (this.getBlock(bx, ly, bz) === BlockType.Air) {
-              this.setBlock(bx, ly, bz, BlockType.Leaves);
-            }
-          }
-        }
-      }
-    }
-  }
 }
 
 /**
