@@ -4,7 +4,9 @@ import { World } from './world';
 
 export class Camera {
   position: Vec3 = [32, 50, 32];
+  // 좌우 회전 (Y축 기준) - 고개를 좌우로 돌리는 것
   yaw = 0;
+  // 상하 회전 (X축 기준) - 고개를 위아래로 끄덕이는 것
   pitch = 0;
 
   private readonly fov = Math.PI / 3;
@@ -16,12 +18,17 @@ export class Camera {
   private readonly jumpSpeed = 9;
   private readonly eyeHeight = 1.62;
 
+  // speed는 수평 이동 속도(고정값), velocityY는 중력/점프에 의해 매 프레임 변하는 수직 속도
   private velocityY = 0;
+  // 땅에 닿아 있을 때만 true — 공중에서 이중 점프를 방지하는 용도
   private onGround = false;
   private keys = new Set<string>();
   private locked = false;
   world: World | null = null;
 
+  /**
+   * @description 카메라가 바라보는 방향의 단위 벡터를 반환하는 함수
+   */
   getForward(): Vec3 {
     return [
       -Math.sin(this.yaw) * Math.cos(this.pitch),
@@ -59,7 +66,7 @@ export class Camera {
 
     const len = Math.sqrt(move[0] * move[0] + move[2] * move[2]);
     if (len > 0) {
-      const s = this.speed * dt / len;
+      const s = (this.speed * dt) / len;
       move[0] *= s;
       move[2] *= s;
     }
