@@ -1,10 +1,10 @@
 # 학습 체크리스트
 
-- [ ] block.ts
+- [x] block.ts
 - [ ] camera.ts
 - [ ] main.ts
-- [ ] math.ts
-- [ ] noise.ts
+- [x] math.ts
+- [x] noise.ts
 - [ ] renderer.ts
 - [ ] shader.ts
 - [x] world.ts
