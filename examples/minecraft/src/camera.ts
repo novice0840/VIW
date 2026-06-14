@@ -37,10 +37,17 @@ export class Camera {
     ];
   }
 
+  /**
+   * @description 카메라 기준 오른쪽 방향의 단위 벡터를 반환하는 함수
+   * 좌우이동을 할 때 사용한다
+   */
   getRight(): Vec3 {
     return [Math.cos(this.yaw), 0, -Math.sin(this.yaw)];
   }
 
+  /**
+   * @description 카메라 시점으로 세계를 변환하는 행렬을 반환하는 함수
+   */
   getViewMatrix() {
     const forward = this.getForward();
     const target = vec3.add(this.position, forward);
