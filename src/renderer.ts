@@ -76,7 +76,7 @@ export class Renderer {
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
     // Generate chunks around camera
-    const renderDistance = 4;
+    const renderDistance = 8;
     this.world.generateAround(camera.position[0], camera.position[2], renderDistance);
 
     // Begin render pass
