@@ -1,5 +1,6 @@
 import { mat4 } from './math';
-import { BLOCK_WGSL, SKY_WGSL } from './shaders';
+import BLOCK_WGSL from './shaders/block.wgsl';
+import SKY_WGSL from './shaders/sky.wgsl';
 import { Camera } from './camera';
 import { World, CHUNK_SIZE } from './world';
 
