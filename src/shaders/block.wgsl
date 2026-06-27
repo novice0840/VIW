@@ -61,6 +61,19 @@ struct GlobalUniforms {
 
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 
+// @location vs @builtin
+// 이 둘은 struct 멤버가 어디서 오는/가는 데이터인지를 지정해요
+// @location(N) - 내가 직접 정의하는 데이터 통로 
+// ex) @location(0) position : vec3<f32> 
+// - 번호로 식별되는 사용자 정의 슬록이에요
+// - vertex 입력에선 -> JS의 vertex buffer 레이아웃의 shaderLocation:0 과 연결 
+// - stage 간 전달 (vertex -> fragment)에서 -> 같은 @location 번호끼리 자동 연결 
+
+// @builtin(name) - GPU가 자동으로 채워주는 특수 데이터 
+// @builtin(position) clipPos : vec4<f32>
+// builtin에 들어올 수 있는 값 
+// position, vertex_index, instance_index, front_facing, frag_depth
+
 struct VertexInput {
   @location(0) position : vec3<f32>,
   @location(1) normal   : vec3<f32>,
