@@ -1,3 +1,16 @@
+// 학습 노트 
+// WGSL 타입별 정렬 (전체)
+// 타입	크기(size)	정렬(align)
+// f32, i32, u32	4	4
+// vec2<f32>	8	8
+// vec3<f32>	12	16 ⚠️
+// vec4<f32>	16	16
+// mat2x2<f32>	16	8
+// mat3x3<f32>	48	16
+// mat4x4<f32>	64	16
+// * 특히나 vec3<f32>의 경우 크기가 정렬의 배수가 아니기 때문에 추기적인 padding을 넣어줘야 하는 경우가 자주 발생한다 
+
+
 struct GlobalUniforms {
   viewProj  : mat4x4<f32>,
   cameraPos : vec3<f32>,
