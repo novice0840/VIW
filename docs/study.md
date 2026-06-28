@@ -6,5 +6,5 @@
 - [x] math.ts
 - [x] noise.ts
 - [ ] renderer.ts
-- [ ] shader.ts
+- [x] shader.ts
 - [x] world.ts

@@ -6,6 +6,7 @@ struct VertexOutput {
 @vertex
 fn vs_main(@builtin(vertex_index) vIdx: u32) -> VertexOutput {
   // Full-screen triangle
+  // 사각형을 만들어서 화면을 덮는게 아니라 큰 삼각형 1개만을 이용해 화면 전체를 덮도록 구현 
   var pos = array<vec2<f32>, 3>(
     vec2(-1.0, -1.0),
     vec2( 3.0, -1.0),
