@@ -124,11 +124,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
   var color = in.color * lighting;
 
+
   // Distance fog
+  // distance, exp, clamp, mix는 WGSL의 내장 빌트인 함수 
   let dist = distance(in.worldPos, global.cameraPos);
   let fogFactor = 1.0 - exp(-dist * global.fogDensity * dist * global.fogDensity);
   let fog = clamp(fogFactor, 0.0, 1.0);
   color = mix(color, global.fogColor, fog);
+
 
   return vec4<f32>(color, 1.0);
 }
