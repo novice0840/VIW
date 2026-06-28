@@ -87,6 +87,14 @@ struct VertexOutput {
   @location(2)       color    : vec3<f32>,
 };
 
+// 학습 노트 
+// vertex shader function
+// 정점(vertex) 1개마다 1번씩 실행되어, 그 정점의 위치를 화면 좌표로 변환하는 함수 
+// 언제 실행: 정점 1개당 1번 
+// 입력(input): VertexInput - JS가 버퍼로 넣어준 position/normal/color
+// 출력(output): VertexOutput - 변환된 좌표 + fragment로 넘길 데이터 
+// 개수: draw call 1개당 1개 함수만 실행 
+
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
   var out: VertexOutput;
@@ -96,6 +104,15 @@ fn vs_main(in: VertexInput) -> VertexOutput {
   out.color    = in.color;
   return out;
 }
+
+// 학습 노트 
+// fragment shader function 
+// 픽셀(fragment) 1개마다 1번씩 실행되어, 그 픽셀의 최종 색을 결정하는 함수
+// 	vertex shader	vs fragment shader
+// 실행 단위	정점 1개당	vs 픽셀 1개당
+// 실행 횟수	정점 36개면 36번	vs 화면 픽셀 수만큼 (수만~수백만 번)
+// 책임	점을 어디에 찍을지 (위치)	vs 점을 무슨 색으로 칠할지 (색)
+// 출력	화면 좌표	vs 최종 색 vec4(r,g,b,a)
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
