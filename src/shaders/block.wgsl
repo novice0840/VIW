@@ -98,6 +98,8 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
   var out: VertexOutput;
+  // 월드 좌표: 게임 세계 안에서의 실제 위치 
+  // 클립 좌표: 화면에 그리기 위해 카메라 시점으로 변환된 위치 
   out.clipPos  = global.viewProj * vec4<f32>(in.position, 1.0);
   out.worldPos = in.position;
   out.normal   = in.normal;
