@@ -6,6 +6,19 @@ import { World, CHUNK_SIZE } from './world';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
 
+/**
+ * @description 청크(chunk) 하나를 화면에 그리는 데 필요한 GPU 정보를 묶은 구조
+ *
+ * buffer
+ *
+ * 청크의 정점 데이터(vertex data)가 저장된 GPU 메모리 덩어리
+ *
+ * vertexCount
+ *
+ * 이 버퍼에 정점이 몇 개 들어있는지
+ * GPU는 버퍼만 봐서는 정점이 몇 개 인지 알 수 없기 때문에
+ * pass.draw(mesh.vertexCount) 로 개수를 알려줘야 한다.
+ */
 interface ChunkMesh {
   buffer: GPUBuffer;
   vertexCount: number;
@@ -60,20 +73,22 @@ export class Renderer {
     // Sun direction (slightly angled)
     const sunDir = [0.4, 0.8, 0.3];
     const sunLen = Math.sqrt(sunDir[0] ** 2 + sunDir[1] ** 2 + sunDir[2] ** 2);
-    sunDir[0] /= sunLen; sunDir[1] /= sunLen; sunDir[2] /= sunLen;
+    sunDir[0] /= sunLen;
+    sunDir[1] /= sunLen;
+    sunDir[2] /= sunLen;
 
     // Fog color matches sky bottom
-    const fogColor = [0.70, 0.82, 0.95];
+    const fogColor = [0.7, 0.82, 0.95];
 
     // Write global uniforms
     const globalData = new Float32Array(GLOBAL_UNIFORM_SIZE / 4);
-    globalData.set(viewProj, 0);          // 0-15: viewProj
-    globalData.set(camera.position, 16);  // 16-18: cameraPos
+    globalData.set(viewProj, 0); // 0-15: viewProj
+    globalData.set(camera.position, 16); // 16-18: cameraPos
     // 19: pad
-    globalData.set(sunDir, 20);           // 20-22: sunDir
+    globalData.set(sunDir, 20); // 20-22: sunDir
     // 23: pad
-    globalData.set(fogColor, 24);         // 24-26: fogColor
-    globalData[27] = 0.008;              // fogDensity
+    globalData.set(fogColor, 24); // 24-26: fogColor
+    globalData[27] = 0.008; // fogDensity
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
     // Generate chunks around camera
@@ -87,7 +102,7 @@ export class Renderer {
       colorAttachments: [
         {
           view: textureView,
-          clearValue: { r: 0.70, g: 0.82, b: 0.95, a: 1 },
+          clearValue: { r: 0.7, g: 0.82, b: 0.95, a: 1 },
           loadOp: 'clear',
           storeOp: 'store',
         },
