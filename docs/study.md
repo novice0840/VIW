@@ -5,6 +5,6 @@
 - [ ] main.ts
 - [x] math.ts
 - [x] noise.ts
-- [ ] renderer.ts
+- [x] renderer.ts
 - [x] shader.ts
 - [x] world.ts
