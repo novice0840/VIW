@@ -3,6 +3,11 @@ import { isSolid } from './block';
 import { World } from './world';
 
 export class Camera {
+  /** 학습 노트
+   *  position의 X, Z는 초기 스폰 월드 좌표. 단 Y는 실제로 게임에 반영되기
+   * 전에 지형 높이에 맞춰 덮어 씌워진다.
+   */
+
   position: Vec3 = [32, 50, 32];
   // 좌우 회전 (Y축 기준) - 고개를 좌우로 돌리는 것
   yaw = 0;
@@ -13,6 +18,7 @@ export class Camera {
   private readonly near = 0.1;
   private readonly far = 300;
   private readonly speed = 6;
+  // sensitivity = 마우스 1픽셀 이동당 회전할 라디안(각도)
   private readonly sensitivity = 0.002;
   private readonly gravity = 24;
   private readonly jumpSpeed = 9;
