@@ -57,6 +57,8 @@ export class Camera {
   getViewMatrix() {
     const forward = this.getForward();
     const target = vec3.add(this.position, forward);
+    // 학습 노트
+    // View Matrix - 월드 좌표를 카메라 기준 좌표로 바꿔주는 4X4 변환 행렬
     return mat4.lookAt(this.position, target, [0, 1, 0]);
   }
 
