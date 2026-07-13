@@ -58,6 +58,13 @@ export class Camera {
     const forward = this.getForward();
     const target = vec3.add(this.position, forward);
     // 학습 노트
+    // 정규화(normalized)란?
+    // 벡터의 방향은 그대로 두고, 길이만 1로 만드는 것
+    //
+    // 왜 하는 가?
+    // "크기"와 "방향"을 분리하려고
+    // 정규화하지 않은 벡터는 "방향"과 "거리"가 섞여 있어 방향만 필요할 땐 거리 정보가 오염원이 된다.
+
     // View Matrix - 월드 좌표를 카메라 기준 좌표로 바꿔주는 4X4 변환 행렬
     return mat4.lookAt(this.position, target, [0, 1, 0]);
   }
