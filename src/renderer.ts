@@ -143,6 +143,23 @@ export class Renderer {
     this.device.queue.submit([encoder.finish()]);
   }
 
+  /**
+   * @description 블록이 바뀐 청크의 메시를 버리는 함수 — 다음 프레임에 lazy하게 재생성된다
+   *
+   * 수정된 청크 하나만 버리면 충분하다. buildMesh의 면 컬링은 청크 로컬 getBlock을
+   * 쓰는데, 범위 밖(옆 청크)을 Air로 취급해 경계 면은 항상 그려지기 때문에
+   * 경계 블록을 부숴도 옆 청크 메시는 이미 올바른 상태다.
+   */
+  invalidateChunkAt(wx: number, wz: number) {
+    const cx = Math.floor(wx / CHUNK_SIZE);
+    const cz = Math.floor(wz / CHUNK_SIZE);
+    const mesh = this.chunkMeshes.get(`${cx},${cz}`);
+    if (mesh) {
+      mesh.buffer.destroy();
+      this.chunkMeshes.delete(`${cx},${cz}`);
+    }
+  }
+
   private createDepthTexture(w: number, h: number) {
     this.depthTexture = this.device.createTexture({
       size: [w, h],

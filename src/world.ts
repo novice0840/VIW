@@ -132,7 +132,7 @@ export class Chunk {
     return y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
   }
 
-  private setBlock(x: number, y: number, z: number, type: BlockType) {
+  setBlock(x: number, y: number, z: number, type: BlockType) {
     this.blocks[this.idx(x, y, z)] = type;
   }
 
@@ -217,6 +217,22 @@ export class World {
     const chunk = this.chunks.get(k);
     if (!chunk) return BlockType.Air;
     return chunk.getBlock(lx, by, lz);
+  }
+
+  /**
+   * @description 월드 좌표의 블록을 다른 타입으로 바꾸는 함수 (파괴 = Air 설정)
+   * 좌표 변환 방식은 getBlock과 동일하다
+   */
+  setBlock(wx: number, wy: number, wz: number, type: BlockType) {
+    const bx = Math.floor(wx);
+    const by = Math.floor(wy);
+    const bz = Math.floor(wz);
+    if (by < 0 || by >= WORLD_HEIGHT) return;
+    const cx = Math.floor(bx / CHUNK_SIZE);
+    const cz = Math.floor(bz / CHUNK_SIZE);
+    const lx = ((bx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((bz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    this.getChunk(cx, cz).setBlock(lx, by, lz, type);
   }
 
   /**
