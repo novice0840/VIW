@@ -1,4 +1,4 @@
-import { mat4, vec3, type Vec3 } from './math';
+import { clamp, mat4, vec3, type Vec3 } from './math';
 import { isSolid } from './block';
 import { World } from './world';
 
@@ -131,9 +131,10 @@ export class Camera {
     document.addEventListener('mousemove', (e) => {
       if (!this.locked) return;
       this.yaw -= e.movementX * this.sensitivity;
-      this.pitch = Math.max(
+      this.pitch = clamp(
+        this.pitch - e.movementY * this.sensitivity,
         -Math.PI / 2 + 0.01,
-        Math.min(Math.PI / 2 - 0.01, this.pitch - e.movementY * this.sensitivity),
+        Math.PI / 2 - 0.01,
       );
     });
 
