@@ -1,8 +1,8 @@
 # 학습 체크리스트
 
 - [x] block.ts
-- [ ] camera.ts
-- [ ] main.ts
+- [x] camera.ts
+- [x] main.ts
 - [x] math.ts
 - [x] noise.ts
 - [x] renderer.ts
