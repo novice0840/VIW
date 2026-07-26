@@ -22,7 +22,7 @@ export class Camera {
   private readonly sensitivity = 0.002;
   private readonly gravity = 24;
   private readonly jumpSpeed = 9;
-  private readonly eyeHeight = 1.62;
+  readonly eyeHeight = 1.62;
 
   // speed는 수평 이동 속도(고정값), velocityY는 중력/점프에 의해 매 프레임 변하는 수직 속도
   private velocityY = 0;
