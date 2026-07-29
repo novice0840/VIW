@@ -26,6 +26,10 @@ export class Chunk {
     return this.blocks[this.idx(x, y, z)];
   }
 
+  setBlock(x: number, y: number, z: number, type: BlockType) {
+    this.blocks[this.idx(x, y, z)] = type;
+  }
+
   /**
    * @description 청크의 블록 데이터를 GPU가 그릴 수 있는 버텍스 배열로 변환하는 함수
    */
@@ -130,10 +134,6 @@ export class Chunk {
 
   private idx(x: number, y: number, z: number): number {
     return y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
-  }
-
-  setBlock(x: number, y: number, z: number, type: BlockType) {
-    this.blocks[this.idx(x, y, z)] = type;
   }
 
   private generate() {
