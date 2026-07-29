@@ -2,7 +2,7 @@ import { Renderer } from './renderer';
 import { Camera } from './camera';
 import { BlockType, isSolid } from './block';
 import { raycast } from './raycast';
-import { WORLD_HEIGHT } from './world';
+import { WORLD_HEIGHT } from './chunk';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
