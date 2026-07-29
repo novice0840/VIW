@@ -6,8 +6,6 @@ import { WORLD_HEIGHT } from './world';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
-// 플레이어 키 — 설치할 블록이 몸과 겹치는지 검사할 때 사용
-const PLAYER_HEIGHT = 1.8;
 
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -42,18 +40,6 @@ async function main() {
 
   camera.attachEvents(canvas);
 
-  // 설치하려는 블록 칸이 플레이어 몸과 겹치는지 검사
-  // 이 게임은 수평 충돌이 없어 플레이어를 발~머리 구간의 세로 기둥으로 취급한다
-  const overlapsPlayer = (bx: number, by: number, bz: number): boolean => {
-    const feetY = camera.position[1] - camera.eyeHeight;
-    return (
-      bx === Math.floor(camera.position[0]) &&
-      bz === Math.floor(camera.position[2]) &&
-      by < feetY + PLAYER_HEIGHT && // 블록 아랫면이 머리보다 낮고
-      by + 1 > feetY // 블록 윗면이 발보다 높으면 겹침
-    );
-  };
-
   canvas.addEventListener('mousedown', (e) => {
     if (document.pointerLockElement !== canvas) return;
 
@@ -71,7 +57,7 @@ async function main() {
       const py = hit.block[1] + hit.normal[1];
       const pz = hit.block[2] + hit.normal[2];
       if (py < 0 || py >= WORLD_HEIGHT) return;
-      if (overlapsPlayer(px, py, pz)) return;
+      if (camera.occupiesBlock(px, py, pz)) return;
       renderer.world.setBlock(px, py, pz, BlockType.Stone);
       renderer.invalidateChunkAt(px, pz);
     }
