@@ -2,7 +2,8 @@ import { mat4 } from './math';
 import BLOCK_WGSL from './shaders/block.wgsl';
 import SKY_WGSL from './shaders/sky.wgsl';
 import { Camera } from './camera';
-import { World, CHUNK_SIZE } from './world';
+import { CHUNK_SIZE } from './chunk';
+import { World } from './world';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
 
