@@ -5,6 +5,29 @@ export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
 const SEA_LEVEL = 20;
 
+const DIRT_DEPTH = 4;
+
+/**
+ * @description 지형 높이에 따라 맨 위 표면에 깔릴 블록 종류를 결정하는 함수
+ */
+function surfaceBlock(height: number): BlockType {
+  if (height > SEA_LEVEL + 1) return BlockType.Snow;
+  if (height <= SEA_LEVEL - 2) return BlockType.Sand;
+  return BlockType.Grass;
+}
+
+/**
+ * @description 기둥의 특정 높이 y에 들어갈 블록 종류를 결정하는 함수
+ * @param height 이 기둥의 지형 높이
+ * @param surface 이 기둥의 표면 블록 종류
+ */
+function columnBlock(y: number, height: number, surface: BlockType): BlockType {
+  if (y === 0) return BlockType.Stone; // 최하단은 항상 돌
+  if (y === height - 1) return surface;
+  if (y >= height - DIRT_DEPTH) return BlockType.Dirt;
+  return BlockType.Stone;
+}
+
 export class Chunk {
   blocks: Uint8Array;
 
@@ -129,6 +152,9 @@ export class Chunk {
     }
 
     const vertices = new Float32Array(verts);
+    // 정점 하나가 float 9개로 이루어져 있어서 9로 나눈다.
+    // position(3) + normal(3) + color(3) = 9 floats
+    // verts는 그냥 숫자를 쭉 이어붙인 평평한 배열이라 길이가 "float 개수"지 "정점 개수"가 아니다. 그래서 9로 나누어야 실제 정점 수가 나온다.
     return { vertices, vertexCount: verts.length / 9 };
   }
 
@@ -153,26 +179,14 @@ export class Chunk {
         const height = Math.floor(SEA_LEVEL + baseHeight * 18);
         const clampedHeight = Math.max(1, Math.min(WORLD_HEIGHT - 1, height));
 
-        for (let y = 0; y < WORLD_HEIGHT; y++) {
-          if (y === 0) {
-            this.setBlock(x, y, z, BlockType.Stone);
-          } else if (y < clampedHeight - 4) {
-            this.setBlock(x, y, z, BlockType.Stone);
-          } else if (y < clampedHeight - 1) {
-            this.setBlock(x, y, z, BlockType.Dirt);
-          } else if (y === clampedHeight - 1) {
-            if (clampedHeight > SEA_LEVEL + 1) {
-              this.setBlock(x, y, z, BlockType.Snow);
-            } else if (clampedHeight <= SEA_LEVEL - 2) {
-              this.setBlock(x, y, z, BlockType.Sand);
-            } else {
-              this.setBlock(x, y, z, BlockType.Grass);
-            }
-          }
-        }
+        // 표면 블록은 기둥 전체에서 하나로 정해지므로 루프 밖에서 미리 구한다.
+        const surface = surfaceBlock(clampedHeight);
 
+        // clampedHeight 위쪽은 공기이고, blocks는 0(Air)으로 초기화되어 있어 채울 필요가 없다.
+        for (let y = 0; y < clampedHeight; y++) {
+          this.setBlock(x, y, z, columnBlock(y, clampedHeight, surface));
+        }
       }
     }
   }
-
 }
