@@ -7,6 +7,15 @@ import { WORLD_HEIGHT } from './chunk';
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
 
+// MouseEvent.button 값 (Pointer Events 스펙의 Left/Middle/Right Mouse 명명을 따름).
+// 주의: 물리적 위치가 아니라 OS가 정한 순서라, 왼손잡이 설정을 켜면
+// 물리적 오른쪽 버튼이 Left(0)를 보낸다.
+const enum MouseButton {
+  Left = 0,
+  Middle = 1, // 휠 클릭
+  Right = 2,
+}
+
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
@@ -46,12 +55,12 @@ async function main() {
     const hit = raycast(renderer.world, camera.position, camera.getForward(), REACH);
     if (!hit) return;
 
-    if (e.button === 0) {
+    if (e.button === MouseButton.Left) {
       // 좌클릭 = 파괴. y=0은 월드 바닥(베드락 역할)이라 뚫리지 않게 보호
       if (hit.block[1] === 0) return;
       renderer.world.setBlock(hit.block[0], hit.block[1], hit.block[2], BlockType.Air);
       renderer.invalidateChunkAt(hit.block[0], hit.block[2]);
-    } else if (e.button === 2) {
+    } else if (e.button === MouseButton.Right) {
       // 우클릭 = 설치. 맞은 면의 법선 방향 한 칸 앞이 설치 위치
       const px = hit.block[0] + hit.normal[0];
       const py = hit.block[1] + hit.normal[1];
