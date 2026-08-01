@@ -1,5 +1,5 @@
 import { BlockType } from './block';
-import { Chunk, CHUNK_SIZE, WORLD_HEIGHT } from './chunk';
+import { Chunk, CHUNK_SIZE, WORLD_HEIGHT, chunkKey } from './chunk';
 
 /**
  * @descriotion 청크(Chunk)들의 컨네이너
@@ -10,7 +10,7 @@ export class World {
   chunks = new Map<string, Chunk>();
 
   getChunk(cx: number, cz: number): Chunk {
-    const k = this.key(cx, cz);
+    const k = chunkKey(cx, cz);
     let chunk = this.chunks.get(k);
     if (!chunk) {
       chunk = new Chunk(cx, cz);
@@ -37,7 +37,7 @@ export class World {
     // remainer이기 때문에 음수를 0 ~ 15 로 변경하기 위한 작업
     const lx = ((bx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     const lz = ((bz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-    const k = this.key(cx, cz);
+    const k = chunkKey(cx, cz);
     const chunk = this.chunks.get(k);
     if (!chunk) return BlockType.Air;
     return chunk.getBlock(lx, by, lz);
@@ -73,9 +73,5 @@ export class World {
         this.getChunk(ccx + dx, ccz + dz);
       }
     }
-  }
-
-  private key(cx: number, cz: number): string {
-    return `${cx},${cz}`;
   }
 }
