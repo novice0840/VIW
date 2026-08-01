@@ -2,7 +2,7 @@ import { mat4 } from './math';
 import BLOCK_WGSL from './shaders/block.wgsl';
 import SKY_WGSL from './shaders/sky.wgsl';
 import { Camera } from './camera';
-import { CHUNK_SIZE } from './chunk';
+import { CHUNK_SIZE, chunkKey } from './chunk';
 import { World } from './world';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
@@ -131,8 +131,7 @@ export class Renderer {
       for (let dz = -renderDistance; dz <= renderDistance; dz++) {
         const cx = ccx + dx;
         const cz = ccz + dz;
-        const key = `${cx},${cz}`;
-        const mesh = this.getOrCreateChunkMesh(key, cx, cz);
+        const mesh = this.getOrCreateChunkMesh(cx, cz);
         if (mesh) {
           pass.setVertexBuffer(0, mesh.buffer);
           pass.draw(mesh.vertexCount);
@@ -154,10 +153,14 @@ export class Renderer {
   invalidateChunkAt(wx: number, wz: number) {
     const cx = Math.floor(wx / CHUNK_SIZE);
     const cz = Math.floor(wz / CHUNK_SIZE);
-    const mesh = this.chunkMeshes.get(`${cx},${cz}`);
+    const key = chunkKey(cx, cz);
+    const mesh = this.chunkMeshes.get(key);
     if (mesh) {
+      // GPU 메모리 반납과 캐시 제거는 별개의 작업이라 둘 다 필요하다.
+      // destroy()만 하면 파괴된 버퍼가 캐시에 남아 다음 프레임에 그대로 쓰이고,
+      // delete()만 하면 VRAM이 GC 타이밍에 맡겨진 채 쌓인다.
       mesh.buffer.destroy();
-      this.chunkMeshes.delete(`${cx},${cz}`);
+      this.chunkMeshes.delete(key);
     }
   }
 
@@ -237,7 +240,8 @@ export class Renderer {
     });
   }
 
-  private getOrCreateChunkMesh(key: string, cx: number, cz: number): ChunkMesh | null {
+  private getOrCreateChunkMesh(cx: number, cz: number): ChunkMesh | null {
+    const key = chunkKey(cx, cz);
     let mesh = this.chunkMeshes.get(key);
     if (mesh) return mesh;
 

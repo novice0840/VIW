@@ -8,6 +8,16 @@ const SEA_LEVEL = 20;
 const DIRT_DEPTH = 4;
 
 /**
+ * @description 청크 좌표를 Map 키 문자열로 만드는 함수
+ *
+ * World(블록 데이터)와 Renderer(GPU 메시)가 각자 Map을 들고 있지만 키 규칙은 하나여야
+ * 하므로, 포맷을 여기 한 군데에만 둔다.
+ */
+export function chunkKey(cx: number, cz: number): string {
+  return `${cx},${cz}`;
+}
+
+/**
  * @description 지형 높이에 따라 맨 위 표면에 깔릴 블록 종류를 결정하는 함수
  */
 function surfaceBlock(height: number): BlockType {
