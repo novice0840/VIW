@@ -27,58 +27,55 @@ export function raycast(
   dir: Vec3,
   maxDistance: number,
 ): RaycastHit | null {
-  // 현재 광선이 들어있는 복셀(블록 칸)
-  let bx = Math.floor(origin[0]);
-  let by = Math.floor(origin[1]);
-  let bz = Math.floor(origin[2]);
+  // 축별 상태를 [X, Y, Z] 배열로 묶는다.
+  // 매 스텝 "가장 가까운 축"을 골라 그 인덱스로만 접근하므로 축마다 분기할 필요가 없다.
 
-  // 각 축의 진행 방향 (+1 / -1, dir 성분이 0이면 0)
-  const stepX = Math.sign(dir[0]);
-  const stepY = Math.sign(dir[1]);
-  const stepZ = Math.sign(dir[2]);
+  // 현재 광선이 들어있는 복셀(블록 칸)
+  const block: Vec3 = [Math.floor(origin[0]), Math.floor(origin[1]), Math.floor(origin[2])];
+
+  // Math.sign(x): 숫자의 부호만 뽑아내는 함수
+  const step: Vec3 = [Math.sign(dir[0]), Math.sign(dir[1]), Math.sign(dir[2])];
 
   // dir 성분이 0이면 Infinity가 되어 그 축은 영원히 선택되지 않는다
-  const tDeltaX = Math.abs(1 / dir[0]);
-  const tDeltaY = Math.abs(1 / dir[1]);
-  const tDeltaZ = Math.abs(1 / dir[2]);
+  const tDelta: Vec3 = [Math.abs(1 / dir[0]), Math.abs(1 / dir[1]), Math.abs(1 / dir[2])];
 
-  let tMaxX = initialTMax(origin[0], dir[0]);
-  let tMaxY = initialTMax(origin[1], dir[1]);
-  let tMaxZ = initialTMax(origin[2], dir[2]);
+  const tMax: Vec3 = [
+    initialTMax(origin[0], dir[0]),
+    initialTMax(origin[1], dir[1]),
+    initialTMax(origin[2], dir[2]),
+  ];
 
   let t = 0;
   while (t <= maxDistance) {
     // 다음 격자선이 가장 가까운 축으로 한 칸 이동
-    // 이동한 축의 반대 방향이 곧 "들어간 면"의 법선이 된다
-    let nx = 0;
-    let ny = 0;
-    let nz = 0;
-
-    if (tMaxX < tMaxY && tMaxX < tMaxZ) {
-      bx += stepX;
-      t = tMaxX;
-      tMaxX += tDeltaX;
-      nx = -stepX;
-    } else if (tMaxY < tMaxZ) {
-      by += stepY;
-      t = tMaxY;
-      tMaxY += tDeltaY;
-      ny = -stepY;
-    } else {
-      bz += stepZ;
-      t = tMaxZ;
-      tMaxZ += tDeltaZ;
-      nz = -stepZ;
-    }
+    const axis = nearestAxis(tMax);
+    block[axis] += step[axis];
+    t = tMax[axis];
+    tMax[axis] += tDelta[axis];
 
     if (t > maxDistance) return null;
 
-    if (isSolid(world.getBlock(bx, by, bz))) {
-      return { block: [bx, by, bz], normal: [nx, ny, nz] };
+    if (isSolid(world.getBlock(block[0], block[1], block[2]))) {
+      // 이동한 축의 반대 방향이 곧 "들어간 면"의 법선이 된다
+      const normal: Vec3 = [0, 0, 0];
+      normal[axis] = -step[axis];
+      return { block: [block[0], block[1], block[2]], normal };
     }
   }
 
   return null;
+}
+
+/**
+ * @description tMax가 가장 작은 축, 즉 다음 격자선이 가장 가까운 축을 고르는 함수
+ * @returns 0 = X, 1 = Y, 2 = Z
+ *
+ * 광선이 격자의 모서리를 정확히 지나 값이 동점이면 뒤쪽 축이 선택된다.
+ * 어느 쪽을 골라도 지나는 칸을 빠짐없이 방문하므로 결과는 달라지지 않는다.
+ */
+function nearestAxis(tMax: Vec3): 0 | 1 | 2 {
+  if (tMax[0] < tMax[1] && tMax[0] < tMax[2]) return 0;
+  return tMax[1] < tMax[2] ? 1 : 2;
 }
 
 /**
