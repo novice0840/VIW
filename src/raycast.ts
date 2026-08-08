@@ -37,8 +37,13 @@ export function raycast(
   const step: Vec3 = [Math.sign(dir[0]), Math.sign(dir[1]), Math.sign(dir[2])];
 
   // dir 성분이 0이면 Infinity가 되어 그 축은 영원히 선택되지 않는다
+  // tDelta[i] i축 격자 한 칸 건너는 시간
   const tDelta: Vec3 = [Math.abs(1 / dir[0]), Math.abs(1 / dir[1]), Math.abs(1 / dir[2])];
 
+  // tMax 초기값
+  // 지금 칸을 벗어나 첫 격자선을 넘는 순간의 t
+  // 예) tMax = [1.1667, Infinity, 1.0]
+  // -> X는 다음 칸을 넘기까지 1.1667 만큼의 시간이 소요된다
   const tMax: Vec3 = [
     initialTMax(origin[0], dir[0]),
     initialTMax(origin[1], dir[1]),
