@@ -1,6 +1,20 @@
 import { Renderer } from './renderer';
 import { Camera } from './camera';
-import { isSolid } from './block';
+import { BlockType, isSolid } from './block';
+import { raycast } from './raycast';
+import { WORLD_HEIGHT } from './chunk';
+
+// 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
+const REACH = 6;
+
+// MouseEvent.button 값 (Pointer Events 스펙의 Left/Middle/Right Mouse 명명을 따름).
+// 주의: 물리적 위치가 아니라 OS가 정한 순서라, 왼손잡이 설정을 켜면
+// 물리적 오른쪽 버튼이 Left(0)를 보낸다.
+const enum MouseButton {
+  Left = 0,
+  Middle = 1, // 휠 클릭
+  Right = 2,
+}
 
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -34,6 +48,32 @@ async function main() {
   camera.position[1] = spawnY + 1 + 1.62;
 
   camera.attachEvents(canvas);
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (document.pointerLockElement !== canvas) return;
+
+    const hit = raycast(renderer.world, camera.position, camera.getForward(), REACH);
+    if (!hit) return;
+
+    if (e.button === MouseButton.Left) {
+      // 좌클릭 = 파괴. y=0은 월드 바닥(베드락 역할)이라 뚫리지 않게 보호
+      if (hit.block[1] === 0) return;
+      renderer.world.setBlock(hit.block[0], hit.block[1], hit.block[2], BlockType.Air);
+      renderer.invalidateChunkAt(hit.block[0], hit.block[2]);
+    } else if (e.button === MouseButton.Right) {
+      // 우클릭 = 설치. 맞은 면의 법선 방향 한 칸 앞이 설치 위치
+      const px = hit.block[0] + hit.normal[0];
+      const py = hit.block[1] + hit.normal[1];
+      const pz = hit.block[2] + hit.normal[2];
+      if (py < 0 || py >= WORLD_HEIGHT) return;
+      if (camera.occupiesBlock(px, py, pz)) return;
+      renderer.world.setBlock(px, py, pz, BlockType.Stone);
+      renderer.invalidateChunkAt(px, pz);
+    }
+  });
+
+  // 우클릭 시 브라우저 컨텍스트 메뉴가 뜨지 않도록 차단
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   const dpr = window.devicePixelRatio || 1;
   const resize = () => {

@@ -23,6 +23,8 @@ export class Camera {
   private readonly gravity = 24;
   private readonly jumpSpeed = 9;
   private readonly eyeHeight = 1.62;
+  // 플레이어 키 — 블록 설치 시 몸 겹침 판정에 사용
+  private readonly bodyHeight = 1.8;
 
   // speed는 수평 이동 속도(고정값), velocityY는 중력/점프에 의해 매 프레임 변하는 수직 속도
   private velocityY = 0;
@@ -71,6 +73,22 @@ export class Camera {
 
   getProjectionMatrix(aspect: number) {
     return mat4.perspective(this.fov, aspect, this.near, this.far);
+  }
+
+  /**
+   * @description 블록 칸 (bx, by, bz)가 플레이어 몸과 겹치는지 판정하는 함수
+   * 이 게임은 수평 충돌이 없어 플레이어를 발~머리 구간의 세로 기둥으로 취급한다
+   */
+  occupiesBlock(bx: number, by: number, bz: number): boolean {
+    // this.postion[1]은 "눈"의 높이이기 때문에 현재 발 위치를 파악하기 위해
+    // this.eyeHeight를 빼 준다
+    const feetY = this.position[1] - this.eyeHeight;
+    return (
+      bx === Math.floor(this.position[0]) &&
+      bz === Math.floor(this.position[2]) &&
+      by < feetY + this.bodyHeight && // 블록 아랫면이 머리보다 낮고
+      by + 1 > feetY // 블록 윗면이 발보다 높으면 겹침
+    );
   }
 
   update(dt: number) {
