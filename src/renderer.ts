@@ -2,7 +2,8 @@ import { mat4 } from './math';
 import BLOCK_WGSL from './shaders/block.wgsl';
 import SKY_WGSL from './shaders/sky.wgsl';
 import { Camera } from './camera';
-import { World, CHUNK_SIZE } from './world';
+import { CHUNK_SIZE, chunkKey } from './chunk';
+import { World } from './world';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
 
@@ -130,8 +131,7 @@ export class Renderer {
       for (let dz = -renderDistance; dz <= renderDistance; dz++) {
         const cx = ccx + dx;
         const cz = ccz + dz;
-        const key = `${cx},${cz}`;
-        const mesh = this.getOrCreateChunkMesh(key, cx, cz);
+        const mesh = this.getOrCreateChunkMesh(cx, cz);
         if (mesh) {
           pass.setVertexBuffer(0, mesh.buffer);
           pass.draw(mesh.vertexCount);
@@ -141,6 +141,27 @@ export class Renderer {
 
     pass.end();
     this.device.queue.submit([encoder.finish()]);
+  }
+
+  /**
+   * @description 블록이 바뀐 청크의 메시를 버리는 함수 — 다음 프레임에 lazy하게 재생성된다
+   *
+   * 수정된 청크 하나만 버리면 충분하다. buildMesh의 면 컬링은 청크 로컬 getBlock을
+   * 쓰는데, 범위 밖(옆 청크)을 Air로 취급해 경계 면은 항상 그려지기 때문에
+   * 경계 블록을 부숴도 옆 청크 메시는 이미 올바른 상태다.
+   */
+  invalidateChunkAt(wx: number, wz: number) {
+    const cx = Math.floor(wx / CHUNK_SIZE);
+    const cz = Math.floor(wz / CHUNK_SIZE);
+    const key = chunkKey(cx, cz);
+    const mesh = this.chunkMeshes.get(key);
+    if (mesh) {
+      // GPU 메모리 반납과 캐시 제거는 별개의 작업이라 둘 다 필요하다.
+      // destroy()만 하면 파괴된 버퍼가 캐시에 남아 다음 프레임에 그대로 쓰이고,
+      // delete()만 하면 VRAM이 GC 타이밍에 맡겨진 채 쌓인다.
+      mesh.buffer.destroy();
+      this.chunkMeshes.delete(key);
+    }
   }
 
   private createDepthTexture(w: number, h: number) {
@@ -219,7 +240,8 @@ export class Renderer {
     });
   }
 
-  private getOrCreateChunkMesh(key: string, cx: number, cz: number): ChunkMesh | null {
+  private getOrCreateChunkMesh(cx: number, cz: number): ChunkMesh | null {
+    const key = chunkKey(cx, cz);
     let mesh = this.chunkMeshes.get(key);
     if (mesh) return mesh;
 
