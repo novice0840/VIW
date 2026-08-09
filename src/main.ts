@@ -1,7 +1,7 @@
 import { Renderer } from './renderer';
 import { Camera } from './camera';
 import { BlockType, isSolid } from './block';
-import { raycast } from './raycast';
+import { raycast, type RaycastHit } from './raycast';
 import { WORLD_HEIGHT } from './chunk';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
@@ -49,10 +49,13 @@ async function main() {
 
   camera.attachEvents(canvas);
 
+  // 매 프레임 갱신되는 조준 대상. 하이라이트 렌더링과 클릭 처리가 같은 값을 본다.
+  let aimed: RaycastHit | null = null;
+
   canvas.addEventListener('mousedown', (e) => {
     if (document.pointerLockElement !== canvas) return;
 
-    const hit = raycast(renderer.world, camera.position, camera.getForward(), REACH);
+    const hit = aimed;
     if (!hit) return;
 
     if (e.button === MouseButton.Left) {
@@ -96,7 +99,9 @@ async function main() {
     lastTime = timestamp;
 
     camera.update(dt);
-    renderer.render(camera, timestamp / 1000);
+    // 조준 대상은 카메라가 움직인 뒤에 구해야 이번 프레임 화면과 어긋나지 않는다.
+    aimed = raycast(renderer.world, camera.position, camera.getForward(), REACH);
+    renderer.render(camera, timestamp / 1000, aimed && aimed.block);
     requestAnimationFrame(frame);
   }
 
