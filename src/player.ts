@@ -2,7 +2,7 @@ import { clamp, mat4, vec3, type Vec3 } from './math';
 import { isSolid } from './block';
 import { World } from './world';
 
-export class Camera {
+export class Player {
   /** 학습 노트
    *  position의 X, Z는 초기 스폰 월드 좌표. 단 Y는 실제로 게임에 반영되기
    * 전에 지형 높이에 맞춰 덮어 씌워진다.
