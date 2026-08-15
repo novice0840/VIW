@@ -24,6 +24,47 @@
       transform: translate(-50%,-50%);
       color: #f66; font: 16px sans-serif; text-align: center;
     }
+    /* 핫바 — 슬롯은 JS가 HOTBAR 배열을 순회하며 생성한다 */
+    #hotbar {
+      position: absolute; bottom: 16px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 2px;
+      padding: 3px;
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #2b2b2b;
+      pointer-events: none;
+    }
+    .slot {
+      position: relative;
+      width: 48px; height: 48px;
+      background: rgba(139,139,139,0.4);
+      border: 2px solid #373737;
+    }
+    /* 선택 표시 — 마크처럼 슬롯보다 큰 흰 테두리가 칸을 감싼다 */
+    .slot.selected {
+      outline: 3px solid #fff;
+      outline-offset: 1px;
+      z-index: 1;
+    }
+    /* 블록 색상 견본. 단색뿐이라 번호를 함께 띄워 초록 계열을 구분한다 */
+    .slot-color {
+      position: absolute; inset: 6px;
+    }
+    .slot-key {
+      position: absolute; right: 2px; bottom: 0;
+      color: #fff; font: bold 12px monospace;
+      text-shadow: 1px 1px 0 rgba(0,0,0,0.9);
+    }
+    /* 블록 이름 — 선택이 바뀔 때 잠깐 떴다가 사라진다 */
+    #block-name {
+      position: absolute; bottom: 80px; left: 50%;
+      transform: translateX(-50%);
+      color: #fff; font: 15px monospace;
+      text-shadow: 1px 1px 0 rgba(0,0,0,0.9);
+      opacity: 0; transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    #block-name.show { opacity: 1; transition: none; }
   </style>
 </head>
 <body>
@@ -34,6 +75,8 @@
     WebGPU is not supported in this browser.<br />
     Try Chrome 113+ or Edge 113+.
   </div>
+  <div id="block-name"></div>
+  <div id="hotbar"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
