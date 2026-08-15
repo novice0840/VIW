@@ -2,7 +2,7 @@ import { mat4, type Vec3 } from './math';
 import BLOCK_WGSL from './shaders/block.wgsl';
 import SKY_WGSL from './shaders/sky.wgsl';
 import HIGHLIGHT_WGSL from './shaders/highlight.wgsl';
-import { Camera } from './camera';
+import { Player } from './player';
 import { CHUNK_SIZE, chunkKey } from './chunk';
 import { World } from './world';
 
@@ -100,9 +100,9 @@ export class Renderer {
   /**
    * @param highlightBlock 조준 중인 블록 좌표. 조준 대상이 없으면 null이라 외곽선을 건너뛴다.
    */
-  render(camera: Camera, _time: number, highlightBlock: Vec3 | null = null) {
-    const view = camera.getViewMatrix();
-    const proj = camera.getProjectionMatrix(this.aspect);
+  render(player: Player, _time: number, highlightBlock: Vec3 | null = null) {
+    const view = player.getViewMatrix();
+    const proj = player.getProjectionMatrix(this.aspect);
     const viewProj = mat4.multiply(proj, view);
 
     // Sun direction (slightly angled)
@@ -118,7 +118,7 @@ export class Renderer {
     // Write global uniforms
     const globalData = new Float32Array(GLOBAL_UNIFORM_SIZE / 4);
     globalData.set(viewProj, 0); // 0-15: viewProj
-    globalData.set(camera.position, 16); // 16-18: cameraPos
+    globalData.set(player.position, 16); // 16-18: cameraPos
     // 19: pad
     globalData.set(sunDir, 20); // 20-22: sunDir
     // 23: pad
@@ -126,9 +126,9 @@ export class Renderer {
     globalData[27] = 0.008; // fogDensity
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
-    // Generate chunks around camera
+    // Generate chunks around player
     const renderDistance = 8;
-    this.world.generateAround(camera.position[0], camera.position[2], renderDistance);
+    this.world.generateAround(player.position[0], player.position[2], renderDistance);
 
     // Begin render pass
     const encoder = this.device.createCommandEncoder();
@@ -158,8 +158,8 @@ export class Renderer {
     pass.setPipeline(this.blockPipeline);
     pass.setBindGroup(0, this.globalBindGroup);
 
-    const ccx = Math.floor(camera.position[0] / CHUNK_SIZE);
-    const ccz = Math.floor(camera.position[2] / CHUNK_SIZE);
+    const ccx = Math.floor(player.position[0] / CHUNK_SIZE);
+    const ccz = Math.floor(player.position[2] / CHUNK_SIZE);
 
     for (let dx = -renderDistance; dx <= renderDistance; dx++) {
       for (let dz = -renderDistance; dz <= renderDistance; dz++) {

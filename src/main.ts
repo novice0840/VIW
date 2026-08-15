@@ -1,8 +1,9 @@
 import { Renderer } from './renderer';
-import { Camera } from './camera';
+import { Player } from './player';
 import { BlockType, isSolid } from './block';
 import { raycast, type RaycastHit } from './raycast';
 import { WORLD_HEIGHT } from './chunk';
+import { Hotbar } from './hotbar';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
@@ -26,8 +27,8 @@ async function main() {
 
   // WebGPU API를 직접 다루며 화면에 세계를 그리는 역할
   const renderer = new Renderer();
-  // 1인칭 시점 카메라이자 플레이어 물리 엔진 역할을 동시에 담당
-  const camera = new Camera();
+  // 플레이어의 물리·입력과 1인칭 시점을 함께 담당
+  const player = new Player();
 
   try {
     await renderer.init(canvas);
@@ -37,17 +38,22 @@ async function main() {
     return;
   }
 
-  camera.world = renderer.world;
-  renderer.world.generateAround(camera.position[0], camera.position[2], 1);
-  const spawnX = Math.floor(camera.position[0]);
-  const spawnZ = Math.floor(camera.position[2]);
+  player.world = renderer.world;
+  renderer.world.generateAround(player.position[0], player.position[2], 1);
+  const spawnX = Math.floor(player.position[0]);
+  const spawnZ = Math.floor(player.position[2]);
   let spawnY = 63;
   while (spawnY > 0 && !isSolid(renderer.world.getBlock(spawnX, spawnY, spawnZ))) {
     spawnY--;
   }
-  camera.position[1] = spawnY + 1 + 1.62;
+  player.position[1] = spawnY + 1 + 1.62;
 
-  camera.attachEvents(canvas);
+  player.attachEvents(canvas);
+
+  const hotbar = new Hotbar(
+    document.getElementById('hotbar')!,
+    document.getElementById('block-name')!,
+  );
 
   // 매 프레임 갱신되는 조준 대상. 하이라이트 렌더링과 클릭 처리가 같은 값을 본다.
   let aimed: RaycastHit | null = null;
@@ -69,8 +75,8 @@ async function main() {
       const py = hit.block[1] + hit.normal[1];
       const pz = hit.block[2] + hit.normal[2];
       if (py < 0 || py >= WORLD_HEIGHT) return;
-      if (camera.occupiesBlock(px, py, pz)) return;
-      renderer.world.setBlock(px, py, pz, BlockType.Stone);
+      if (player.occupiesBlock(px, py, pz)) return;
+      renderer.world.setBlock(px, py, pz, player.selectedBlock);
       renderer.invalidateChunkAt(px, pz);
     }
   });
@@ -98,10 +104,11 @@ async function main() {
     const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
     lastTime = timestamp;
 
-    camera.update(dt);
-    // 조준 대상은 카메라가 움직인 뒤에 구해야 이번 프레임 화면과 어긋나지 않는다.
-    aimed = raycast(renderer.world, camera.position, camera.getForward(), REACH);
-    renderer.render(camera, timestamp / 1000, aimed && aimed.block);
+    player.update(dt);
+    hotbar.update(player.selectedBlock);
+    // 조준 대상은 플레이어가 움직인 뒤에 구해야 이번 프레임 화면과 어긋나지 않는다.
+    aimed = raycast(renderer.world, player.position, player.getForward(), REACH);
+    renderer.render(player, timestamp / 1000, aimed && aimed.block);
     requestAnimationFrame(frame);
   }
 
