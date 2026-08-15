@@ -1,8 +1,8 @@
 import { clamp, mat4, vec3, type Vec3 } from './math';
-import { isSolid } from './block';
+import { BlockType, isSolid, HOTBAR } from './block';
 import { World } from './world';
 
-export class Camera {
+export class Player {
   /** 학습 노트
    *  position의 X, Z는 초기 스폰 월드 좌표. 단 Y는 실제로 게임에 반영되기
    * 전에 지형 높이에 맞춰 덮어 씌워진다.
@@ -13,6 +13,9 @@ export class Camera {
   yaw = 0;
   // 상하 회전 (X축 기준) - 고개를 위아래로 끄덕이는 것
   pitch = 0;
+
+  selectedBlock = BlockType.Grass;
+  world: World | null = null;
 
   private readonly fov = Math.PI / 3;
   private readonly near = 0.1;
@@ -32,7 +35,6 @@ export class Camera {
   private onGround = false;
   private keys = new Set<string>();
   private locked = false;
-  world: World | null = null;
 
   /**
    * @description 카메라가 바라보는 방향의 단위 벡터를 반환하는 함수
@@ -158,6 +160,13 @@ export class Camera {
 
     document.addEventListener('keydown', (e) => {
       this.keys.add(e.code);
+
+      if (e.code.startsWith('Digit') && this.locked) {
+        const n = Number(e.code.slice(5));
+        const block = HOTBAR[n - 1];
+        if (block === undefined) return;
+        this.selectedBlock = block;
+      }
     });
 
     document.addEventListener('keyup', (e) => {
