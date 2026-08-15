@@ -70,7 +70,7 @@ async function main() {
       const pz = hit.block[2] + hit.normal[2];
       if (py < 0 || py >= WORLD_HEIGHT) return;
       if (player.occupiesBlock(px, py, pz)) return;
-      renderer.world.setBlock(px, py, pz, BlockType.Stone);
+      renderer.world.setBlock(px, py, pz, player.selectedBlock);
       renderer.invalidateChunkAt(px, pz);
     }
   });

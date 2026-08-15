@@ -4,10 +4,20 @@ export const enum BlockType {
   Dirt = 2,
   Stone = 3,
   Sand = 4,
-  Wood = 6,
-  Leaves = 7,
-  Snow = 8,
+  Wood = 5,
+  Leaves = 6,
+  Snow = 7,
 }
+
+export const HOTBAR = [
+  BlockType.Grass,
+  BlockType.Dirt,
+  BlockType.Stone,
+  BlockType.Sand,
+  BlockType.Wood,
+  BlockType.Leaves,
+  BlockType.Snow,
+];
 
 // RGB colors for each block type [top, side, bottom]
 // Each face can have a different color (e.g., grass top is green, side has brown+green, bottom is dirt)
@@ -19,8 +29,8 @@ export interface BlockColors {
 
 export const BLOCK_COLORS: Record<number, BlockColors> = {
   [BlockType.Grass]: {
-    top: [0.36, 0.63, 0.20],
-    side: [0.36, 0.50, 0.20],
+    top: [0.36, 0.63, 0.2],
+    side: [0.36, 0.5, 0.2],
     bottom: [0.55, 0.37, 0.24],
   },
   [BlockType.Dirt]: {
@@ -30,7 +40,7 @@ export const BLOCK_COLORS: Record<number, BlockColors> = {
   },
   [BlockType.Stone]: {
     top: [0.55, 0.55, 0.55],
-    side: [0.50, 0.50, 0.50],
+    side: [0.5, 0.5, 0.5],
     bottom: [0.45, 0.45, 0.45],
   },
   [BlockType.Sand]: {
@@ -39,18 +49,18 @@ export const BLOCK_COLORS: Record<number, BlockColors> = {
     bottom: [0.78, 0.74, 0.54],
   },
   [BlockType.Wood]: {
-    top: [0.60, 0.45, 0.25],
-    side: [0.45, 0.30, 0.15],
-    bottom: [0.60, 0.45, 0.25],
+    top: [0.6, 0.45, 0.25],
+    side: [0.45, 0.3, 0.15],
+    bottom: [0.6, 0.45, 0.25],
   },
   [BlockType.Leaves]: {
-    top: [0.20, 0.50, 0.15],
+    top: [0.2, 0.5, 0.15],
     side: [0.18, 0.45, 0.13],
-    bottom: [0.15, 0.40, 0.10],
+    bottom: [0.15, 0.4, 0.1],
   },
   [BlockType.Snow]: {
     top: [0.95, 0.95, 0.97],
-    side: [0.90, 0.90, 0.92],
+    side: [0.9, 0.9, 0.92],
     bottom: [0.85, 0.85, 0.87],
   },
 };
