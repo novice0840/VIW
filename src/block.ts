@@ -19,6 +19,18 @@ export const HOTBAR = [
   BlockType.Snow,
 ];
 
+// const enum은 컴파일 시 숫자로 인라인돼 런타임에 이름이 남지 않는다.
+// 핫바 UI에 블록 이름을 띄우려면 따로 적어둬야 한다.
+export const BLOCK_NAMES: Record<number, string> = {
+  [BlockType.Grass]: 'Grass',
+  [BlockType.Dirt]: 'Dirt',
+  [BlockType.Stone]: 'Stone',
+  [BlockType.Sand]: 'Sand',
+  [BlockType.Wood]: 'Wood',
+  [BlockType.Leaves]: 'Leaves',
+  [BlockType.Snow]: 'Snow',
+};
+
 // RGB colors for each block type [top, side, bottom]
 // Each face can have a different color (e.g., grass top is green, side has brown+green, bottom is dirt)
 export interface BlockColors {

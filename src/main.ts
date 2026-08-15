@@ -3,6 +3,7 @@ import { Player } from './player';
 import { BlockType, isSolid } from './block';
 import { raycast, type RaycastHit } from './raycast';
 import { WORLD_HEIGHT } from './chunk';
+import { Hotbar } from './hotbar';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
@@ -48,6 +49,11 @@ async function main() {
   player.position[1] = spawnY + 1 + 1.62;
 
   player.attachEvents(canvas);
+
+  const hotbar = new Hotbar(
+    document.getElementById('hotbar')!,
+    document.getElementById('block-name')!,
+  );
 
   // 매 프레임 갱신되는 조준 대상. 하이라이트 렌더링과 클릭 처리가 같은 값을 본다.
   let aimed: RaycastHit | null = null;
@@ -99,6 +105,7 @@ async function main() {
     lastTime = timestamp;
 
     player.update(dt);
+    hotbar.update(player.selectedBlock);
     // 조준 대상은 플레이어가 움직인 뒤에 구해야 이번 프레임 화면과 어긋나지 않는다.
     aimed = raycast(renderer.world, player.position, player.getForward(), REACH);
     renderer.render(player, timestamp / 1000, aimed && aimed.block);
