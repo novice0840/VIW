@@ -26,12 +26,10 @@ export class Player {
   private readonly gravity = 24;
   private readonly jumpSpeed = 9;
   private readonly eyeHeight = 1.62;
-  // 플레이어 키 — 블록 설치 시 몸 겹침 판정에 사용
+  private readonly halfWidth = 0.3;
   private readonly bodyHeight = 1.8;
 
-  // speed는 수평 이동 속도(고정값), velocityY는 중력/점프에 의해 매 프레임 변하는 수직 속도
   private velocityY = 0;
-  // 땅에 닿아 있을 때만 true — 공중에서 이중 점프를 방지하는 용도
   private onGround = false;
   private keys = new Set<string>();
   private locked = false;
