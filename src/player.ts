@@ -1,4 +1,4 @@
-import { clamp, mat4, vec3, type Vec3 } from './math';
+import { clamp, hasOverlap, mat4, vec3, type Vec3 } from './math';
 import { BlockType, isSolid, HOTBAR } from './block';
 import { World } from './world';
 
@@ -79,12 +79,13 @@ export class Player {
    * @description 블록 칸 (bx, by, bz)가 플레이어 몸과 겹치는지 판정하는 함수
    */
   occupiesBlock(bx: number, by: number, bz: number): boolean {
+    const x = this.position[0];
+    const z = this.position[2];
     const feetY = this.position[1] - this.eyeHeight;
     return (
-      bx === Math.floor(this.position[0]) &&
-      bz === Math.floor(this.position[2]) &&
-      by < feetY + this.bodyHeight && // 블록 아랫면이 머리보다 낮고
-      by + 1 > feetY // 블록 윗면이 발보다 높으면 겹침
+      hasOverlap(bx, bx + 1, x - this.halfWidth, x + this.halfWidth) &&
+      hasOverlap(bz, bz + 1, z - this.halfWidth, z + this.halfWidth) &&
+      hasOverlap(by, by + 1, feetY, feetY + this.bodyHeight)
     );
   }
 

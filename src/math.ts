@@ -5,6 +5,11 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+// 경계가 딱 닿기만 한 것(겹침 폭 0)은 겹침으로 치지 않는다 — 등호 없음
+export function hasOverlap(aMin: number, aMax: number, bMin: number, bMax: number): boolean {
+  return aMin < bMax && bMin < aMax;
+}
+
 export const vec3 = {
   add(a: Vec3, b: Vec3): Vec3 {
     return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
