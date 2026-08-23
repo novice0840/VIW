@@ -135,7 +135,9 @@ export class Player {
       this.groundHeight(x - this.halfWidth, z - this.halfWidth, feetY + 1),
     );
 
-    if (newFeetY <= ground) {
+    if (this.velocityY > 0 && this.collidesAt(x, newFeetY, z)) {
+      this.velocityY = 0;
+    } else if (newFeetY <= ground) {
       this.position[1] = ground + this.eyeHeight;
       this.velocityY = 0;
       this.onGround = true;
