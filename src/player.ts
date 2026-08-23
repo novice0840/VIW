@@ -77,11 +77,8 @@ export class Player {
 
   /**
    * @description 블록 칸 (bx, by, bz)가 플레이어 몸과 겹치는지 판정하는 함수
-   * 이 게임은 수평 충돌이 없어 플레이어를 발~머리 구간의 세로 기둥으로 취급한다
    */
   occupiesBlock(bx: number, by: number, bz: number): boolean {
-    // this.postion[1]은 "눈"의 높이이기 때문에 현재 발 위치를 파악하기 위해
-    // this.eyeHeight를 빼 준다
     const feetY = this.position[1] - this.eyeHeight;
     return (
       bx === Math.floor(this.position[0]) &&
