@@ -172,6 +172,21 @@ export class Player {
     });
   }
 
+  private collidesAt(x: number, feetY: number, z: number): boolean {
+    const minX = x - this.halfWidth;
+    const maxX = x + this.halfWidth;
+    const minY = feetY;
+    const maxY = feetY + this.bodyHeight;
+    const minZ = z - this.halfWidth;
+    const maxZ = z + this.halfWidth;
+
+    for (let bx = Math.floor(minX); bx <= Math.floor(maxX); bx++)
+      for (let by = Math.floor(minY); by <= Math.floor(maxY); by++)
+        for (let bz = Math.floor(minZ); bz <= Math.floor(maxZ); bz++)
+          if (this.isSolidAt(bx, by, bz)) return true;
+    return false;
+  }
+
   private isSolidAt(x: number, y: number, z: number): boolean {
     if (!this.world) return false;
     return isSolid(this.world.getBlock(x, y, z));
