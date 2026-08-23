@@ -1,4 +1,4 @@
-import { clamp, mat4, vec3, type Vec3 } from './math';
+import { clamp, hasOverlap, mat4, vec3, type Vec3 } from './math';
 import { BlockType, isSolid, HOTBAR } from './block';
 import { World } from './world';
 
@@ -26,12 +26,10 @@ export class Player {
   private readonly gravity = 24;
   private readonly jumpSpeed = 9;
   private readonly eyeHeight = 1.62;
-  // 플레이어 키 — 블록 설치 시 몸 겹침 판정에 사용
+  private readonly halfWidth = 0.3;
   private readonly bodyHeight = 1.8;
 
-  // speed는 수평 이동 속도(고정값), velocityY는 중력/점프에 의해 매 프레임 변하는 수직 속도
   private velocityY = 0;
-  // 땅에 닿아 있을 때만 true — 공중에서 이중 점프를 방지하는 용도
   private onGround = false;
   private keys = new Set<string>();
   private locked = false;
@@ -79,24 +77,20 @@ export class Player {
 
   /**
    * @description 블록 칸 (bx, by, bz)가 플레이어 몸과 겹치는지 판정하는 함수
-   * 이 게임은 수평 충돌이 없어 플레이어를 발~머리 구간의 세로 기둥으로 취급한다
    */
   occupiesBlock(bx: number, by: number, bz: number): boolean {
-    // this.postion[1]은 "눈"의 높이이기 때문에 현재 발 위치를 파악하기 위해
-    // this.eyeHeight를 빼 준다
+    const x = this.position[0];
+    const z = this.position[2];
     const feetY = this.position[1] - this.eyeHeight;
     return (
-      bx === Math.floor(this.position[0]) &&
-      bz === Math.floor(this.position[2]) &&
-      by < feetY + this.bodyHeight && // 블록 아랫면이 머리보다 낮고
-      by + 1 > feetY // 블록 윗면이 발보다 높으면 겹침
+      hasOverlap(bx, bx + 1, x - this.halfWidth, x + this.halfWidth) &&
+      hasOverlap(bz, bz + 1, z - this.halfWidth, z + this.halfWidth) &&
+      hasOverlap(by, by + 1, feetY, feetY + this.bodyHeight)
     );
   }
 
   update(dt: number) {
     if (!this.locked) return;
-
-    // Horizontal movement (no wall collision for now)
     const forward: Vec3 = [-Math.sin(this.yaw), 0, -Math.cos(this.yaw)];
     const right = this.getRight();
     let move: Vec3 = [0, 0, 0];
@@ -113,11 +107,18 @@ export class Player {
       move[2] *= s;
     }
 
-    this.position[0] += move[0];
-    this.position[2] += move[2];
-
-    // Gravity & jump
     const feetY = this.position[1] - this.eyeHeight;
+
+    const newX = this.position[0] + move[0];
+    const newZ = this.position[2] + move[2];
+
+    if (!this.collidesAt(newX, feetY, this.position[2])) {
+      this.position[0] = newX;
+    }
+
+    if (!this.collidesAt(this.position[0], feetY, newZ)) {
+      this.position[2] = newZ;
+    }
 
     if (this.keys.has('Space') && this.onGround) {
       this.velocityY = this.jumpSpeed;
@@ -126,9 +127,18 @@ export class Player {
 
     this.velocityY -= this.gravity * dt;
     const newFeetY = feetY + this.velocityY * dt;
-    const ground = this.groundHeight(this.position[0], this.position[2], feetY + 1);
+    const x = this.position[0];
+    const z = this.position[2];
+    const ground = Math.max(
+      this.groundHeight(x + this.halfWidth, z + this.halfWidth, feetY + 1),
+      this.groundHeight(x + this.halfWidth, z - this.halfWidth, feetY + 1),
+      this.groundHeight(x - this.halfWidth, z + this.halfWidth, feetY + 1),
+      this.groundHeight(x - this.halfWidth, z - this.halfWidth, feetY + 1),
+    );
 
-    if (newFeetY <= ground) {
+    if (this.velocityY > 0 && this.collidesAt(x, newFeetY, z)) {
+      this.velocityY = 0;
+    } else if (newFeetY <= ground) {
       this.position[1] = ground + this.eyeHeight;
       this.velocityY = 0;
       this.onGround = true;
@@ -172,6 +182,21 @@ export class Player {
     document.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
     });
+  }
+
+  private collidesAt(x: number, feetY: number, z: number): boolean {
+    const minX = x - this.halfWidth;
+    const maxX = x + this.halfWidth;
+    const minY = feetY;
+    const maxY = feetY + this.bodyHeight;
+    const minZ = z - this.halfWidth;
+    const maxZ = z + this.halfWidth;
+
+    for (let bx = Math.floor(minX); bx <= Math.floor(maxX); bx++)
+      for (let by = Math.floor(minY); by <= Math.floor(maxY); by++)
+        for (let bz = Math.floor(minZ); bz <= Math.floor(maxZ); bz++)
+          if (this.isSolidAt(bx, by, bz)) return true;
+    return false;
   }
 
   private isSolidAt(x: number, y: number, z: number): boolean {

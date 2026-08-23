@@ -52,8 +52,12 @@ Claude는 구현 방법을 먼저 말하지 않고 질문한다.
 
 ## 커밋 컨벤션
 
-`type: 한국어 제목 (#이슈번호)` 형식을 따른다.
+`type: 한국어 제목` 형식을 따른다.
 type은 `feat` / `fix` / `refactor` / `docs` / `chore` / `perf`.
+
+제목에 이슈 번호는 넣지 않는다 — squash merge로 개별 커밋 제목은
+main 히스토리에 남지 않으므로 의미가 없다. 이슈 연결은 PR 본문의
+`Closes #N`과 squash merge 제목이 담당한다.
 
 본문은 무엇을 바꿨는지보다 **왜 바꿨는지**를 남긴다.
 Co-Authored-By 라인은 넣지 않는다.
@@ -65,5 +69,6 @@ Co-Authored-By 라인은 넣지 않는다.
 - PR 본문에 `Closes #N`을 넣어 이슈를 연결한다 — 제목에는 이슈 번호를 넣지 않는다
 - 머지는 squash 전용이며 사용자가 GitHub 웹에서 직접 한다 (Claude는 머지하지 않는다)
 - Squash and merge를 누르면 GitHub이 제목 뒤에 `(#PR번호)`를 자동으로 붙인다.
-  제목 입력란에서 이를 지워 이슈 번호만 남긴다 — `docs: 제목 (#7) (#8)` → `docs: 제목 (#7)`.
-  CLI 설정(`squash_merge_commit_title`)으로는 막을 수 없어 수동으로 지워야 한다
+  제목 입력란에서 이를 지우고 `(#이슈번호)`로 바꿔, main 히스토리에는 이슈 번호가 남게 한다 —
+  `feat: 제목 (#14)` → `feat: 제목 (#13)`.
+  CLI 설정(`squash_merge_commit_title`)으로는 막을 수 없어 수동으로 고쳐야 한다
