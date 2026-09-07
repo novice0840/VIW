@@ -1,6 +1,6 @@
 # MIW
 
-TypeScript + WebGPU로 구현한 마인크래프트.
+TypeScript + WebGPU로 구현한 복셀 게임.
 
 엔진도 그래픽스 라이브러리도 쓰지 않고, WebGPU API와 WGSL 셰이더를 직접 다뤄
 지형 생성 · 청크 메싱 · 1인칭 이동 · 블록 파괴/설치를 밑바닥부터 만든다.
