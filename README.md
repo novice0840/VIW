@@ -1,4 +1,4 @@
-# MIW
+# VIW — Voxel In Web
 
 TypeScript + WebGPU로 구현한 복셀 게임.
 
