@@ -250,6 +250,7 @@ function missing() {
 }
 
 // 아틀라스 배치: index = row * 4 + col
+// 이 순서가 곧 block.ts의 타일 인덱스이므로 함부로 바꾸지 않는다.
 const LAYOUT = [
   ['grass_top', grassTop, 1],
   ['grass_side', grassSide, 2],
@@ -262,7 +263,7 @@ const LAYOUT = [
   ['snow', snow, 9],
 ];
 
-mkdirSync(join(OUT, 'tiles'), { recursive: true });
+mkdirSync(OUT, { recursive: true });
 
 const atlasW = TILE * GRID;
 const atlas = new Uint8Array(atlasW * atlasW * 4);
@@ -283,16 +284,10 @@ function blit(tile, col, row) {
 for (let i = 0; i < GRID * GRID; i++) {
   const col = i % GRID;
   const row = (i / GRID) | 0;
-  let tile;
-  if (i < LAYOUT.length) {
-    const [name, fn, seed] = LAYOUT[i];
-    tile = fn(mulberry32(seed * 7919));
-    writeFileSync(join(OUT, 'tiles', `${name}.png`), encodePNG(TILE, TILE, tile.px));
-  } else {
-    tile = missing();
-  }
+  // LAYOUT에 없는 슬롯은 마젠타 체커로 채운다 — UV가 틀리면 화면에서 바로 튄다
+  const tile = i < LAYOUT.length ? LAYOUT[i][1](mulberry32(LAYOUT[i][2] * 7919)) : missing();
   blit(tile, col, row);
 }
 
 writeFileSync(join(OUT, 'atlas.png'), encodePNG(atlasW, atlasW, atlas));
-console.log(`atlas ${atlasW}x${atlasW} + ${LAYOUT.length} tiles -> ${OUT}`);
+console.log(`atlas ${atlasW}x${atlasW} (${LAYOUT.length} tiles) -> ${join(OUT, 'atlas.png')}`);
