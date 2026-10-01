@@ -1,8 +1,19 @@
-import { BLOCK_COLORS, BLOCK_NAMES, HOTBAR, type BlockType } from './block';
+import { ATLAS_GRID, ATLAS_URL, BLOCK_NAMES, BLOCK_TILES, HOTBAR, type BlockType } from './block';
 
-// 블록 색은 0~1 실수인데 CSS rgb()는 0~255 정수를 쓴다.
-function toCssColor([r, g, b]: [number, number, number]): string {
-  return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+/**
+ * @description 아틀라스의 타일 하나만 보이도록 요소의 배경을 설정하는 함수 (CSS 스프라이트)
+ *
+ * 배경 이미지를 요소의 GRID배 크기로 늘리면 타일 하나가 요소에 딱 맞는다.
+ * background-position의 %는 "이미지와 요소의 남는 폭" 기준이라,
+ * col번째 타일은 col / (GRID - 1) * 100%로 맞춰진다.
+ */
+function setTileBackground(el: HTMLElement, tile: number) {
+  const col = tile % ATLAS_GRID;
+  const row = Math.floor(tile / ATLAS_GRID);
+  const step = 100 / (ATLAS_GRID - 1);
+  el.style.backgroundImage = `url(${ATLAS_URL})`;
+  el.style.backgroundSize = `${ATLAS_GRID * 100}% ${ATLAS_GRID * 100}%`;
+  el.style.backgroundPosition = `${col * step}% ${row * step}%`;
 }
 
 /**
@@ -23,10 +34,11 @@ export class Hotbar {
       const slot = document.createElement('div');
       slot.className = 'slot';
 
-      const color = document.createElement('div');
-      color.className = 'slot-color';
-      color.style.background = toCssColor(BLOCK_COLORS[block].top);
-      slot.appendChild(color);
+      // 옆면 타일을 쓴다 — 잔디처럼 윗면만으로는 다른 블록과 헷갈리는 경우가 있어서
+      const icon = document.createElement('div');
+      icon.className = 'slot-icon';
+      setTileBackground(icon, BLOCK_TILES[block].side);
+      slot.appendChild(icon);
 
       const key = document.createElement('div');
       key.className = 'slot-key';

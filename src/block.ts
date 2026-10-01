@@ -31,50 +31,46 @@ export const BLOCK_NAMES: Record<number, string> = {
   [BlockType.Snow]: 'Snow',
 };
 
-// RGB colors for each block type [top, side, bottom]
-// Each face can have a different color (e.g., grass top is green, side has brown+green, bottom is dirt)
-export interface BlockColors {
-  top: [number, number, number];
-  side: [number, number, number];
-  bottom: [number, number, number];
+/**
+ * @description 아틀라스(public/textures/atlas.png)의 타일 번호
+ *
+ * 아틀라스는 16px 타일이 4x4로 놓인 한 장의 이미지이고, 번호는 row * 4 + col 순서다.
+ * 순서는 tools/gen-textures.mjs의 LAYOUT이 정하므로 둘을 함께 바꿔야 한다.
+ */
+export const ATLAS_GRID = 4;
+
+// public/ 아래 파일은 빌드 결과물 루트에 그대로 복사된다. 상대 경로라 배포 base 경로가 달라도 동작한다.
+// 렌더러(WebGPU 텍스처)와 핫바(CSS 배경)가 같은 이미지를 쓴다.
+export const ATLAS_URL = 'textures/atlas.png';
+
+const enum Tile {
+  GrassTop = 0,
+  GrassSide = 1,
+  Dirt = 2,
+  Stone = 3,
+  Sand = 4,
+  WoodTop = 5,
+  WoodSide = 6,
+  Leaves = 7,
+  Snow = 8,
 }
 
-export const BLOCK_COLORS: Record<number, BlockColors> = {
-  [BlockType.Grass]: {
-    top: [0.36, 0.63, 0.2],
-    side: [0.36, 0.5, 0.2],
-    bottom: [0.55, 0.37, 0.24],
-  },
-  [BlockType.Dirt]: {
-    top: [0.55, 0.37, 0.24],
-    side: [0.55, 0.37, 0.24],
-    bottom: [0.55, 0.37, 0.24],
-  },
-  [BlockType.Stone]: {
-    top: [0.55, 0.55, 0.55],
-    side: [0.5, 0.5, 0.5],
-    bottom: [0.45, 0.45, 0.45],
-  },
-  [BlockType.Sand]: {
-    top: [0.86, 0.82, 0.62],
-    side: [0.82, 0.78, 0.58],
-    bottom: [0.78, 0.74, 0.54],
-  },
-  [BlockType.Wood]: {
-    top: [0.6, 0.45, 0.25],
-    side: [0.45, 0.3, 0.15],
-    bottom: [0.6, 0.45, 0.25],
-  },
-  [BlockType.Leaves]: {
-    top: [0.2, 0.5, 0.15],
-    side: [0.18, 0.45, 0.13],
-    bottom: [0.15, 0.4, 0.1],
-  },
-  [BlockType.Snow]: {
-    top: [0.95, 0.95, 0.97],
-    side: [0.9, 0.9, 0.92],
-    bottom: [0.85, 0.85, 0.87],
-  },
+export interface BlockTiles {
+  top: number;
+  side: number;
+  bottom: number;
+}
+
+const uniform = (tile: Tile): BlockTiles => ({ top: tile, side: tile, bottom: tile });
+
+export const BLOCK_TILES: Record<number, BlockTiles> = {
+  [BlockType.Grass]: { top: Tile.GrassTop, side: Tile.GrassSide, bottom: Tile.Dirt },
+  [BlockType.Dirt]: uniform(Tile.Dirt),
+  [BlockType.Stone]: uniform(Tile.Stone),
+  [BlockType.Sand]: uniform(Tile.Sand),
+  [BlockType.Wood]: { top: Tile.WoodTop, side: Tile.WoodSide, bottom: Tile.WoodTop },
+  [BlockType.Leaves]: uniform(Tile.Leaves),
+  [BlockType.Snow]: uniform(Tile.Snow),
 };
 
 export function isTransparent(block: BlockType): boolean {

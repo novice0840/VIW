@@ -46,9 +46,11 @@
       outline-offset: 1px;
       z-index: 1;
     }
-    /* 블록 색상 견본. 단색뿐이라 번호를 함께 띄워 초록 계열을 구분한다 */
-    .slot-color {
+    /* 블록 아이콘 — 아틀라스 타일 하나를 배경으로 보여준다 (배경 위치는 JS가 지정) */
+    .slot-icon {
       position: absolute; inset: 6px;
+      background-repeat: no-repeat;
+      image-rendering: pixelated; /* 16px 픽셀 아트를 흐리지 않고 확대 */
     }
     .slot-key {
       position: absolute; right: 2px; bottom: 0;

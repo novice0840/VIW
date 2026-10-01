@@ -61,6 +61,11 @@ struct GlobalUniforms {
 
 @group(0) @binding(0) var<uniform> global : GlobalUniforms;
 
+// group 1 = per-material. 블록 텍스처 아틀라스와 그 샘플러.
+// 샘플러는 "텍스처를 어떻게 읽을지"(필터링, 경계 처리)만 담고, 텍스처 데이터 자체는 따로 묶는다.
+@group(1) @binding(0) var atlasTexture : texture_2d<f32>;
+@group(1) @binding(1) var atlasSampler : sampler;
+
 // @location vs @builtin
 // 이 둘은 struct 멤버가 어디서 오는/가는 데이터인지를 지정해요
 // @location(N) - 내가 직접 정의하는 데이터 통로 
@@ -77,21 +82,21 @@ struct GlobalUniforms {
 struct VertexInput {
   @location(0) position : vec3<f32>,
   @location(1) normal   : vec3<f32>,
-  @location(2) color    : vec3<f32>,
+  @location(2) uv       : vec2<f32>,
 };
 
 struct VertexOutput {
   @builtin(position) clipPos  : vec4<f32>,
   @location(0)       worldPos : vec3<f32>,
   @location(1)       normal   : vec3<f32>,
-  @location(2)       color    : vec3<f32>,
+  @location(2)       uv       : vec2<f32>,
 };
 
 // 학습 노트 
 // vertex shader function
 // 정점(vertex) 1개마다 1번씩 실행되어, 그 정점의 위치를 화면 좌표로 변환하는 함수 
 // 언제 실행: 정점 1개당 1번 
-// 입력(input): VertexInput - JS가 버퍼로 넣어준 position/normal/color
+// 입력(input): VertexInput - JS가 버퍼로 넣어준 position/normal/uv
 // 출력(output): VertexOutput - 변환된 좌표 + fragment로 넘길 데이터 
 // 개수: draw call 1개당 1개 함수만 실행 
 
@@ -103,7 +108,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
   out.clipPos  = global.viewProj * vec4<f32>(in.position, 1.0);
   out.worldPos = in.position;
   out.normal   = in.normal;
-  out.color    = in.color;
+  out.uv       = in.uv;
   return out;
 }
 
@@ -124,7 +129,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let diffuse = nDotL * 0.65;
   let lighting = ambient + diffuse;
 
-  var color = in.color * lighting;
+  // uv는 정점 사이에서 보간되어 들어오므로 픽셀마다 아틀라스의 다른 텍셀을 읽는다.
+  let albedo = textureSample(atlasTexture, atlasSampler, in.uv).rgb;
+  var color = albedo * lighting;
 
 
   // Distance fog

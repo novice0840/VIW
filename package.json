@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build"
+    "build": "tsc && vite build",
+    "gen:textures": "node tools/gen-textures.mjs public/textures"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.52",
