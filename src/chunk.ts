@@ -1,5 +1,5 @@
 import { ATLAS_GRID, BlockType, BLOCK_TILES, isTransparent } from './block';
-import { fbm, hash2d } from './noise';
+import { fbm, hash2d, noise3d } from './noise';
 
 export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
@@ -18,6 +18,23 @@ const TREE_MIN_GAP = 4;
 // hash2d에서 서로 독립적인 값을 뽑기 위한 seed
 const SEED_TREE_PLACE = 1;
 const SEED_TREE_HEIGHT = 2;
+
+// 치즈 동굴: 노이즈 값이 임계값을 넘는 곳을 비운다. 임계값이 클수록 공동이 작고 드물다.
+const CHEESE_THRESHOLD = 0.4;
+// 노이즈 좌표 배율 = 주파수. 작을수록 공동이 커진다. y를 더 크게 줘서 공동을 납작하게 만든다.
+const CHEESE_SCALE_XZ = 0.05;
+const CHEESE_SCALE_Y = 0.09;
+// 치즈 동굴은 지표에서 이 깊이보다 아래에만 만든다 — 지표 근처가 크게 무너지지 않게.
+const CHEESE_MIN_DEPTH = 6;
+
+// 스파게티 동굴: 노이즈 두 개가 동시에 0 근처인 곳을 비운다. 폭이 클수록 터널이 굵다.
+const SPAGHETTI_WIDTH = 0.08;
+// 스케일을 줄이면 터널 전체가 확대된다 — 굵어지는 대신 드물어져서, 폭만 키울 때보다 지하가 덜 빈다.
+const SPAGHETTI_SCALE_XZ = 0.02;
+const SPAGHETTI_SCALE_Y = 0.035;
+// noise3d에는 seed가 없으므로, 좌표를 멀리 밀어서 서로 무관한 노이즈 두 개를 얻는다.
+const SPAGHETTI_OFFSET_A = 71.3;
+const SPAGHETTI_OFFSET_B = 157.9;
 
 // position(3) + normal(3) + uv(2)
 export const FLOATS_PER_VERTEX = 8;
@@ -207,11 +224,13 @@ export class Chunk {
   /**
    * @description 청크의 블록을 채우는 함수
    *
-   * 1단계에서 높이맵으로 땅을 채우고, 2단계에서 그 표면 위에 나무를 얹는다.
-   * 나무는 "표면이 잔디인가", "땅 높이가 얼마인가"를 알아야 하므로 땅이 다 채워진 뒤에 놓는다.
+   * 지형 → 동굴 → 나무 순서로 진행한다.
+   * 나무는 "표면이 잔디인가"를 보고 심으므로 동굴을 판 뒤에 놓아야 한다 — 그래야
+   * 동굴 입구 위에 나무가 떠 있거나, 동굴이 나무 기둥을 자르는 일이 없다.
    */
   private generate() {
     const heights = this.generateTerrain();
+    this.carveCaves(heights);
     this.placeTrees(heights);
   }
 
@@ -249,6 +268,46 @@ export class Chunk {
     }
 
     return heights;
+  }
+
+  /**
+   * @description 땅 속을 3D 노이즈로 파내 동굴을 만드는 함수
+   *
+   * 블록마다 그 좌표의 노이즈 값만 보고 공기로 바꿀지 정한다. 이웃 블록이나 이웃 청크를
+   * 볼 필요가 없어, 청크 경계에서도 동굴이 끊김 없이 이어진다.
+   *
+   * - 치즈: 노이즈 하나가 임계값을 넘는 곳 → 덩어리 모양의 넓은 공동
+   * - 스파게티: 노이즈 두 개가 동시에 0 근처인 곳 → 가는 터널.
+   *   3D에서 노이즈 하나의 "0 근처"는 얇은 판(면)이 되고, 판 두 장이 교차하는 곳이 선(터널)이 된다.
+   *
+   * 스파게티는 지표까지 뚫을 수 있어 동굴 입구가 된다.
+   * 최하단 y = 0은 파지 않아 월드 바닥이 뚫리지 않는다.
+   */
+  private carveCaves(heights: Uint8Array) {
+    for (let z = 0; z < CHUNK_SIZE; z++) {
+      for (let x = 0; x < CHUNK_SIZE; x++) {
+        const wx = this.cx * CHUNK_SIZE + x;
+        const wz = this.cz * CHUNK_SIZE + z;
+        const ground = heights[z * CHUNK_SIZE + x];
+
+        // 땅이 있는 칸(y < ground)만 검사한다. 지표 위는 이미 공기라 노이즈 계산을 건너뛴다.
+        for (let y = 1; y < ground; y++) {
+          const cheese =
+            y < ground - CHEESE_MIN_DEPTH &&
+            noise3d(wx * CHEESE_SCALE_XZ, y * CHEESE_SCALE_Y, wz * CHEESE_SCALE_XZ) >
+              CHEESE_THRESHOLD;
+
+          const sx = wx * SPAGHETTI_SCALE_XZ;
+          const sy = y * SPAGHETTI_SCALE_Y;
+          const sz = wz * SPAGHETTI_SCALE_XZ;
+          const spaghetti =
+            Math.abs(noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < SPAGHETTI_WIDTH &&
+            Math.abs(noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < SPAGHETTI_WIDTH;
+
+          if (cheese || spaghetti) this.setBlock(x, y, z, BlockType.Air);
+        }
+      }
+    }
   }
 
   /**
