@@ -28,9 +28,12 @@ export class Player {
   private readonly eyeHeight = 1.62;
   private readonly halfWidth = 0.3;
   private readonly bodyHeight = 1.8;
+  private readonly flySpeed = 20;
 
   private velocityY = 0;
   private onGround = false;
+  // 디버그용 비행 모드. 켜져 있으면 중력과 블록 충돌을 모두 무시한다 (noclip).
+  private flying = false;
   private keys = new Set<string>();
   private locked = false;
 
@@ -102,9 +105,14 @@ export class Player {
 
     const len = Math.sqrt(move[0] * move[0] + move[2] * move[2]);
     if (len > 0) {
-      const s = (this.speed * dt) / len;
+      const s = ((this.flying ? this.flySpeed : this.speed) * dt) / len;
       move[0] *= s;
       move[2] *= s;
+    }
+
+    if (this.flying) {
+      this.fly(move, dt);
+      return;
     }
 
     const feetY = this.position[1] - this.eyeHeight;
@@ -148,6 +156,35 @@ export class Player {
     }
   }
 
+  /**
+   * @description 비행 모드의 이동. 수평 이동량 move에 Space/Shift 상하 이동을 더해 그대로 적용한다
+   *
+   * 충돌 검사를 하지 않으므로 블록을 통과한다. 돌 속에 들어가면 메시가 공기와 맞닿은 면만
+   * 담고 있어 주변 돌은 보이지 않고, 동굴처럼 비어 있는 공간의 벽만 보인다.
+   */
+  private fly(move: Vec3, dt: number) {
+    let up = 0;
+    if (this.keys.has('Space')) up += 1;
+    if (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) up -= 1;
+
+    this.position[0] += move[0];
+    this.position[1] += up * this.flySpeed * dt;
+    this.position[2] += move[2];
+  }
+
+  /**
+   * @description 비행 모드를 켜고 끄는 함수
+   *
+   * 끌 때 velocityY를 0으로 두어, 비행 전에 쌓여 있던 낙하 속도로 갑자기 떨어지지 않게 한다.
+   * 블록 속에서 끄면 착지 판정이 매 프레임 1~2칸씩 끌어올려, 위쪽의 첫 빈 공간(지표나 동굴 바닥)으로
+   * 몇 프레임 안에 빠져나온다.
+   */
+  private toggleFlying() {
+    this.flying = !this.flying;
+    this.velocityY = 0;
+    this.onGround = false;
+  }
+
   attachEvents(canvas: HTMLCanvasElement) {
     canvas.addEventListener('click', () => {
       canvas.requestPointerLock();
@@ -170,6 +207,12 @@ export class Player {
 
     document.addEventListener('keydown', (e) => {
       this.keys.add(e.code);
+
+      // 키를 누르고 있으면 keydown이 반복해서 들어온다 (e.repeat = true).
+      // 반복분까지 토글하면 누르는 시간에 따라 켜졌다 꺼졌다 하므로 첫 입력만 받는다.
+      if (e.code === 'KeyF' && this.locked && !e.repeat) {
+        this.toggleFlying();
+      }
 
       if (e.code.startsWith('Digit') && this.locked) {
         const n = Number(e.code.slice(5));
