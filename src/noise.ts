@@ -58,6 +58,26 @@ export function noise2d(x: number, y: number): number {
   );
 }
 
+/**
+ * @description 정수 좌표 (x, z)를 [0, 1) 범위의 의사난수로 바꾸는 함수
+ *
+ * 같은 입력에는 항상 같은 값을 돌려준다 — 청크를 언제 어떤 순서로 생성해도
+ * 결과가 같아야 하므로 Math.random() 대신 이걸 쓴다.
+ * noise2d와 달리 이웃 좌표끼리 값이 전혀 닮지 않는다 (매끄러움이 없는 "흩뿌리기"용).
+ *
+ * seed를 바꾸면 같은 좌표에서 서로 독립적인 값을 여러 개 뽑을 수 있다 (배치 여부, 높이 등).
+ */
+export function hash2d(x: number, z: number, seed = 0): number {
+  // 좌표마다 다른 큰 홀수를 곱해 섞은 뒤, murmur3의 finalizer로 비트를 골고루 흩뜨린다.
+  // 곱셈만 하고 끝내면 인접 좌표의 하위 비트가 비슷하게 남아 줄무늬 패턴이 생긴다.
+  let h = Math.imul(x, 0x27d4eb2d) ^ Math.imul(z, 0x165667b1) ^ Math.imul(seed, 0x9e3779b9);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  // >>> 0 으로 부호 없는 32비트로 바꾼 뒤 2^32로 나눠 [0, 1)로 만든다.
+  return (h >>> 0) / 4294967296;
+}
+
 export function fbm(x: number, y: number, octaves: number, lacunarity: number, gain: number): number {
   let sum = 0;
   let amp = 1;

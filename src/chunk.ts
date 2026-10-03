@@ -1,11 +1,23 @@
 import { ATLAS_GRID, BlockType, BLOCK_TILES, isTransparent } from './block';
-import { fbm } from './noise';
+import { fbm, hash2d } from './noise';
 
 export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
 const SEA_LEVEL = 20;
 
 const DIRT_DEPTH = 4;
+
+// 잔디 기둥 하나에 나무가 설 확률
+const TREE_CHANCE = 0.03;
+const TREE_MIN_TRUNK = 4;
+const TREE_MAX_TRUNK = 6;
+// 잎이 기둥에서 수평으로 퍼지는 최대 칸 수
+const LEAF_RADIUS = 2;
+// 나무 기둥끼리 이 칸 수보다 가까우면 심지 않는다 (가로·세로 중 큰 쪽 기준)
+const TREE_MIN_GAP = 4;
+// hash2d에서 서로 독립적인 값을 뽑기 위한 seed
+const SEED_TREE_PLACE = 1;
+const SEED_TREE_HEIGHT = 2;
 
 // position(3) + normal(3) + uv(2)
 export const FLOATS_PER_VERTEX = 8;
@@ -192,9 +204,25 @@ export class Chunk {
     return y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
   }
 
+  /**
+   * @description 청크의 블록을 채우는 함수
+   *
+   * 1단계에서 높이맵으로 땅을 채우고, 2단계에서 그 표면 위에 나무를 얹는다.
+   * 나무는 "표면이 잔디인가", "땅 높이가 얼마인가"를 알아야 하므로 땅이 다 채워진 뒤에 놓는다.
+   */
   private generate() {
+    const heights = this.generateTerrain();
+    this.placeTrees(heights);
+  }
+
+  /**
+   * @description 높이맵으로 기둥마다 땅을 채우는 함수
+   * @returns 기둥별 지형 높이 (index = z * CHUNK_SIZE + x). 표면 블록은 height - 1에 있다.
+   */
+  private generateTerrain(): Uint8Array {
     const wx = this.cx * CHUNK_SIZE;
     const wz = this.cz * CHUNK_SIZE;
+    const heights = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
 
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
@@ -216,6 +244,84 @@ export class Chunk {
         for (let y = 0; y < clampedHeight; y++) {
           this.setBlock(x, y, z, columnBlock(y, clampedHeight, surface));
         }
+        heights[z * CHUNK_SIZE + x] = clampedHeight;
+      }
+    }
+
+    return heights;
+  }
+
+  /**
+   * @description 잔디 표면 위에 나무를 심는 함수
+   *
+   * 심을지 말지와 기둥 높이는 월드 좌표의 해시로 정한다. 그래서 같은 청크를
+   * 다시 생성해도 같은 자리에 같은 나무가 나온다.
+   *
+   * 잎이 옆 청크로 삐져나가지 않도록 청크 가장자리 LEAF_RADIUS칸 안쪽에만 심는다.
+   * 그 결과 청크 경계를 따라 폭 2 * LEAF_RADIUS의 나무 없는 띠가 생긴다 — 경계를 넘는
+   * 구조물을 다루려면 이웃 청크에 블록을 써 넣는 구조가 필요하다.
+   */
+  private placeTrees(heights: Uint8Array) {
+    // 이미 심은 기둥의 로컬 좌표. 간격 검사용이다.
+    // 순회 순서가 고정이라 이 검사도 결정론적이다 — 같은 청크면 항상 같은 나무가 탈락한다.
+    const planted: [number, number][] = [];
+
+    for (let z = LEAF_RADIUS; z < CHUNK_SIZE - LEAF_RADIUS; z++) {
+      for (let x = LEAF_RADIUS; x < CHUNK_SIZE - LEAF_RADIUS; x++) {
+        const wx = this.cx * CHUNK_SIZE + x;
+        const wz = this.cz * CHUNK_SIZE + z;
+        if (hash2d(wx, wz, SEED_TREE_PLACE) >= TREE_CHANCE) continue;
+
+        const ground = heights[z * CHUNK_SIZE + x];
+        if (this.getBlock(x, ground - 1, z) !== BlockType.Grass) continue;
+
+        const tooClose = planted.some(
+          ([px, pz]) => Math.max(Math.abs(px - x), Math.abs(pz - z)) < TREE_MIN_GAP,
+        );
+        if (tooClose) continue;
+
+        const trunk =
+          TREE_MIN_TRUNK +
+          Math.floor(hash2d(wx, wz, SEED_TREE_HEIGHT) * (TREE_MAX_TRUNK - TREE_MIN_TRUNK + 1));
+        // 잎 꼭대기(기둥 맨 위 + 1)가 월드 높이를 넘으면 심지 않는다.
+        if (ground + trunk >= WORLD_HEIGHT) continue;
+
+        this.placeTree(x, ground, z, trunk);
+        planted.push([x, z]);
+      }
+    }
+  }
+
+  /**
+   * @description (x, z) 기둥의 땅 높이 ground 위에 나무 한 그루를 놓는 함수
+   *
+   * top = 기둥 맨 위 블록의 y. 잎은 위로 갈수록 좁아지고,
+   * 모서리를 깎아 정사각 상자가 아니라 둥근 덩어리처럼 보이게 한다.
+   */
+  private placeTree(x: number, ground: number, z: number, trunk: number) {
+    const top = ground + trunk - 1;
+
+    for (let y = ground; y <= top; y++) {
+      this.setBlock(x, y, z, BlockType.Wood);
+    }
+
+    this.placeLeafLayer(x, top - 2, z, LEAF_RADIUS, true); // 5×5, 모서리 제외
+    this.placeLeafLayer(x, top - 1, z, LEAF_RADIUS, true); // 5×5, 모서리 제외
+    this.placeLeafLayer(x, top, z, 1, false); // 3×3
+    this.placeLeafLayer(x, top + 1, z, 1, true); // + 모양
+  }
+
+  /**
+   * @description (x, z)를 중심으로 높이 y에 한 변이 2 * radius + 1인 정사각형 잎 층을 까는 함수
+   * @param cutCorners true면 네 모서리 칸을 비운다
+   */
+  private placeLeafLayer(x: number, y: number, z: number, radius: number, cutCorners: boolean) {
+    for (let dz = -radius; dz <= radius; dz++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (cutCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue;
+        // 기둥이나 지형을 덮어쓰지 않고 빈 칸만 잎으로 채운다.
+        if (this.getBlock(x + dx, y, z + dz) !== BlockType.Air) continue;
+        this.setBlock(x + dx, y, z + dz, BlockType.Leaves);
       }
     }
   }
