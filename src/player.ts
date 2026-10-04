@@ -28,9 +28,16 @@ export class Player {
   private readonly eyeHeight = 1.62;
   private readonly halfWidth = 0.3;
   private readonly bodyHeight = 1.8;
+  private readonly flySpeed = 20;
+  // Space를 이 시간(ms) 안에 두 번 누르면 비행 모드를 토글한다. 마크의 7틱(350ms)에 맞춘다.
+  private readonly doubleTapMs = 350;
 
   private velocityY = 0;
   private onGround = false;
+  // 디버그용 비행 모드. 켜져 있으면 중력을 무시한다. 블록 충돌은 걷기와 똑같이 적용된다.
+  private flying = false;
+  // 직전 Space 입력 시각. 더블탭 판정에 쓴다.
+  private lastSpaceTime = -Infinity;
   private keys = new Set<string>();
   private locked = false;
 
@@ -102,9 +109,14 @@ export class Player {
 
     const len = Math.sqrt(move[0] * move[0] + move[2] * move[2]);
     if (len > 0) {
-      const s = (this.speed * dt) / len;
+      const s = ((this.flying ? this.flySpeed : this.speed) * dt) / len;
       move[0] *= s;
       move[2] *= s;
+    }
+
+    if (this.flying) {
+      this.fly(move, dt);
+      return;
     }
 
     const feetY = this.position[1] - this.eyeHeight;
@@ -148,6 +160,55 @@ export class Player {
     }
   }
 
+  /**
+   * @description 비행 모드의 이동. 수평 이동량 move에 Space/Shift 상하 이동을 더해 축마다 따로 적용한다
+   *
+   * 축을 나눠 검사하므로 벽에 비스듬히 부딪혀도 막힌 축만 멈추고 나머지 축으로는 미끄러진다.
+   * 세로 이동이 막히면 블록 면에 딱 붙인다. 그냥 멈추기만 하면 비행 속도가 빨라
+   * 바닥이나 천장과 최대 flySpeed * dt(60fps에서 약 0.33칸)만큼 틈이 남는다.
+   */
+  private fly(move: Vec3, dt: number) {
+    let up = 0;
+    if (this.keys.has('Space')) up += 1;
+    if (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) up -= 1;
+
+    const feetY = this.position[1] - this.eyeHeight;
+
+    const newX = this.position[0] + move[0];
+    if (!this.collidesAt(newX, feetY, this.position[2])) this.position[0] = newX;
+
+    const newZ = this.position[2] + move[2];
+    if (!this.collidesAt(this.position[0], feetY, newZ)) this.position[2] = newZ;
+
+    if (up === 0) return;
+    const x = this.position[0];
+    const z = this.position[2];
+    let newFeetY = feetY + up * this.flySpeed * dt;
+    if (this.collidesAt(x, newFeetY, z)) {
+      // 내려갈 땐 발이 닿은 블록의 윗면, 올라갈 땐 머리가 닿은 블록의 아랫면에 맞춘다.
+      // collidesAt은 floor(maxY) 칸까지 검사하므로, 머리가 정확히 정수 y에 닿으면 그 위 블록과
+      // 겹친다고 본다. 머리 쪽은 아주 조금 아래로 띄워 둔다.
+      newFeetY =
+        up < 0
+          ? Math.floor(newFeetY) + 1
+          : Math.floor(newFeetY + this.bodyHeight) - this.bodyHeight - 1e-4;
+      // 맞춘 위치도 막혀 있으면(좁은 틈 등) 이번 프레임은 세로로 움직이지 않는다.
+      if (this.collidesAt(x, newFeetY, z)) return;
+    }
+    this.position[1] = newFeetY + this.eyeHeight;
+  }
+
+  /**
+   * @description 비행 모드를 켜고 끄는 함수
+   *
+   * 끌 때 velocityY를 0으로 두어, 비행 전에 쌓여 있던 낙하 속도로 갑자기 떨어지지 않게 한다.
+   */
+  private toggleFlying() {
+    this.flying = !this.flying;
+    this.velocityY = 0;
+    this.onGround = false;
+  }
+
   attachEvents(canvas: HTMLCanvasElement) {
     canvas.addEventListener('click', () => {
       canvas.requestPointerLock();
@@ -170,6 +231,18 @@ export class Player {
 
     document.addEventListener('keydown', (e) => {
       this.keys.add(e.code);
+
+      // 키를 누르고 있으면 keydown이 반복해서 들어온다 (e.repeat = true).
+      // 반복분을 탭으로 세면 꾹 누르는 것만으로 더블탭이 되므로 첫 입력만 받는다.
+      if (e.code === 'Space' && this.locked && !e.repeat) {
+        if (e.timeStamp - this.lastSpaceTime < this.doubleTapMs) {
+          this.toggleFlying();
+          // 판정에 쓴 탭을 소비한다. 그대로 두면 세 번째 탭이 두 번째와 짝지어 다시 토글된다.
+          this.lastSpaceTime = -Infinity;
+        } else {
+          this.lastSpaceTime = e.timeStamp;
+        }
+      }
 
       if (e.code.startsWith('Digit') && this.locked) {
         const n = Number(e.code.slice(5));
