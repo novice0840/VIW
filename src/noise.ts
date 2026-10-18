@@ -59,6 +59,56 @@ export function noise2d(x: number, y: number): number {
 }
 
 /**
+ * @description 3D 격자 꼭짓점의 기울기 벡터와 거리 벡터 (x, y, z)의 내적
+ *
+ * hash 하위 4비트로 정육면체 모서리 방향 12개(일부 중복해 16개) 중 하나를 고른다.
+ * 2D의 grad2d가 대각 방향 4개를 쓰는 것과 같은 역할이다.
+ */
+function grad3d(hash: number, x: number, y: number, z: number): number {
+  const h = hash & 15;
+  const u = h < 8 ? x : y;
+  const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+  return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+}
+
+/**
+ * @description 3D Perlin 노이즈. 대략 -1 ~ 1 사이 값을 매끄럽게 돌려준다
+ *
+ * noise2d와 원리는 같고 축이 하나 늘었다 — 점을 둘러싼 격자 꼭짓점이 4개에서 8개가 되고,
+ * 보간도 x → y 두 번에서 x → y → z 세 번이 된다.
+ */
+export function noise3d(x: number, y: number, z: number): number {
+  const xi = Math.floor(x) & 255;
+  const yi = Math.floor(y) & 255;
+  const zi = Math.floor(z) & 255;
+  const xf = x - Math.floor(x);
+  const yf = y - Math.floor(y);
+  const zf = z - Math.floor(z);
+
+  const u = fade(xf);
+  const v = fade(yf);
+  const w = fade(zf);
+
+  // 꼭짓점 8개의 해시. 이름의 세 글자는 각각 x, y, z 쪽에서 a = 작은 쪽, b = 큰 쪽.
+  const aaa = P[P[P[xi] + yi] + zi];
+  const aba = P[P[P[xi] + yi + 1] + zi];
+  const aab = P[P[P[xi] + yi] + zi + 1];
+  const abb = P[P[P[xi] + yi + 1] + zi + 1];
+  const baa = P[P[P[xi + 1] + yi] + zi];
+  const bba = P[P[P[xi + 1] + yi + 1] + zi];
+  const bab = P[P[P[xi + 1] + yi] + zi + 1];
+  const bbb = P[P[P[xi + 1] + yi + 1] + zi + 1];
+
+  // x 방향으로 4쌍을 보간 → y 방향으로 2쌍 → z 방향으로 1쌍
+  const x1 = lerp(grad3d(aaa, xf, yf, zf), grad3d(baa, xf - 1, yf, zf), u);
+  const x2 = lerp(grad3d(aba, xf, yf - 1, zf), grad3d(bba, xf - 1, yf - 1, zf), u);
+  const x3 = lerp(grad3d(aab, xf, yf, zf - 1), grad3d(bab, xf - 1, yf, zf - 1), u);
+  const x4 = lerp(grad3d(abb, xf, yf - 1, zf - 1), grad3d(bbb, xf - 1, yf - 1, zf - 1), u);
+
+  return lerp(lerp(x1, x2, v), lerp(x3, x4, v), w);
+}
+
+/**
  * @description 정수 좌표 (x, z)를 [0, 1) 범위의 의사난수로 바꾸는 함수
  *
  * 같은 입력에는 항상 같은 값을 돌려준다 — 청크를 언제 어떤 순서로 생성해도
