@@ -1,5 +1,6 @@
 import { BlockType } from './block';
 import { Chunk, CHUNK_SIZE, WORLD_HEIGHT, chunkKey } from './chunk';
+import { stats } from './stats';
 
 /**
  * @descriotion 청크(Chunk)들의 컨네이너
@@ -13,7 +14,10 @@ export class World {
     const k = chunkKey(cx, cz);
     let chunk = this.chunks.get(k);
     if (!chunk) {
+      // 생성자가 지형·동굴·나무를 모두 채우므로, 생성자 시간이 곧 청크 생성 시간이다.
+      const t0 = performance.now();
       chunk = new Chunk(cx, cz);
+      stats.recordChunkGen(performance.now() - t0);
       this.chunks.set(k, chunk);
     }
     return chunk;

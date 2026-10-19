@@ -4,6 +4,8 @@ import { BlockType, isSolid } from './block';
 import { raycast, type RaycastHit } from './raycast';
 import { WORLD_HEIGHT } from './chunk';
 import { Hotbar } from './hotbar';
+import { DebugHud } from './debugHud';
+import { stats } from './stats';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
@@ -84,6 +86,22 @@ async function main() {
   // 우클릭 시 브라우저 컨텍스트 메뉴가 뜨지 않도록 차단
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  const debugHud = new DebugHud(document.getElementById('debug')!);
+
+  // 디버그 키는 포인터 잠금 여부와 상관없이 받는다 — 숫자를 보면서 마우스를 풀어 둘 때가 많다.
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.code === 'F3') {
+      // F3은 브라우저의 '다음 찾기' 단축키라 기본 동작을 막아야 한다.
+      e.preventDefault();
+      debugHud.toggle();
+    } else if (e.code === 'BracketLeft') {
+      renderer.changeRenderDistance(-1);
+    } else if (e.code === 'BracketRight') {
+      renderer.changeRenderDistance(1);
+    }
+  });
+
   const dpr = window.devicePixelRatio || 1;
   const resize = () => {
     const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
@@ -101,14 +119,31 @@ async function main() {
   let lastTime = performance.now();
 
   function frame(timestamp: number) {
-    const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+    const cpuStart = performance.now();
+    const frameMs = timestamp - lastTime;
+    const dt = Math.min(frameMs / 1000, 0.1);
     lastTime = timestamp;
+    stats.beginFrame();
 
     player.update(dt);
     hotbar.update(player.selectedBlock);
     // 조준 대상은 플레이어가 움직인 뒤에 구해야 이번 프레임 화면과 어긋나지 않는다.
     aimed = raycast(renderer.world, player.position, player.getForward(), REACH);
     renderer.render(player, timestamp / 1000, aimed && aimed.block);
+
+    // CPU 시간 = 이번 프레임에 JS가 일한 시간. GPU는 submit 이후 따로 일하므로 여기에 들어가지 않는다.
+    stats.endFrame(frameMs, performance.now() - cpuStart);
+    const report = stats.takeReport(performance.now());
+    if (report) {
+      debugHud.update(report, {
+        position: player.position,
+        renderDistance: renderer.renderDistance,
+        loadedChunks: renderer.world.chunks.size,
+        cachedMeshes: renderer.cachedMeshCount,
+        gpuTimingSupported: renderer.gpuTimingSupported,
+      });
+    }
+
     requestAnimationFrame(frame);
   }
 
