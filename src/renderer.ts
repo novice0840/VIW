@@ -6,6 +6,7 @@ import { Player } from './player';
 import { CHUNK_SIZE, FLOATS_PER_VERTEX, chunkKey } from './chunk';
 import { World } from './world';
 import { ATLAS_URL } from './block';
+import { stats } from './stats';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
 
@@ -51,6 +52,23 @@ interface ChunkMesh {
   vertexCount: number;
 }
 
+/**
+ * @description 렌더 패스의 GPU 실행 시간을 재는 데 필요한 자원 묶음 (timestamp-query 지원 기기에서만 만든다)
+ *
+ * GPU가 패스 시작과 끝에 시각을 querySet에 찍고 → resolveBuffer로 옮기고 → readBuffer로 복사한 뒤
+ * CPU가 mapAsync로 읽는다. querySet과 매핑 가능한 버퍼를 바로 연결할 수 없어서 버퍼가 두 개 필요하다
+ * (QUERY_RESOLVE와 MAP_READ는 같은 버퍼에 함께 줄 수 없다).
+ */
+interface GpuTimer {
+  querySet: GPUQuerySet;
+  resolveBuffer: GPUBuffer;
+  readBuffer: GPUBuffer;
+}
+
+// 렌더 거리 조절 범위. 크게 키우면 처음 한 번에 (2r + 1)²개를 생성·메싱해서 몇 초간 멈출 수 있다.
+const MIN_RENDER_DISTANCE = 2;
+const MAX_RENDER_DISTANCE = 32;
+
 export class Renderer {
   private device!: GPUDevice;
   private context!: GPUCanvasContext;
@@ -72,12 +90,22 @@ export class Renderer {
   private atlasBindGroup!: GPUBindGroup;
 
   private chunkMeshes = new Map<string, ChunkMesh>();
+  private gpuTimer: GpuTimer | null = null;
   world!: World;
+
+  // 플레이어 주변 몇 청크까지 생성하고 그릴지 (반지름). 디버그용으로 키를 눌러 바꿀 수 있다.
+  renderDistance = 8;
 
   async init(canvas: HTMLCanvasElement) {
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw new Error('No WebGPU adapter');
-    this.device = await adapter.requestDevice();
+    // timestamp-query는 선택 기능이라 어댑터가 지원할 때만 device 생성 시 요청할 수 있다.
+    // 지원하지 않는데 요청하면 requestDevice가 실패한다.
+    const canTime = adapter.features.has('timestamp-query');
+    this.device = await adapter.requestDevice({
+      requiredFeatures: canTime ? ['timestamp-query'] : [],
+    });
+    if (canTime) this.createGpuTimer();
 
     this.context = canvas.getContext('webgpu')!;
     this.format = navigator.gpu.getPreferredCanvasFormat();
@@ -98,6 +126,21 @@ export class Renderer {
   onResize(w: number, h: number) {
     if (this.depthTexture) this.depthTexture.destroy();
     this.createDepthTexture(w, h);
+  }
+
+  changeRenderDistance(delta: number) {
+    this.renderDistance = Math.min(
+      MAX_RENDER_DISTANCE,
+      Math.max(MIN_RENDER_DISTANCE, this.renderDistance + delta),
+    );
+  }
+
+  get cachedMeshCount(): number {
+    return this.chunkMeshes.size;
+  }
+
+  get gpuTimingSupported(): boolean {
+    return this.gpuTimer !== null;
   }
 
   /**
@@ -130,13 +173,17 @@ export class Renderer {
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
     // Generate chunks around player
-    const renderDistance = 8;
+    const renderDistance = this.renderDistance;
     this.world.generateAround(player.position[0], player.position[2], renderDistance);
 
     // Begin render pass
     const encoder = this.device.createCommandEncoder();
     const textureView = this.context.getCurrentTexture().createView();
     const pass = encoder.beginRenderPass({
+      // 패스가 GPU에서 시작할 때 0번, 끝날 때 1번 칸에 시각을 찍는다.
+      timestampWrites: this.gpuTimer
+        ? { querySet: this.gpuTimer.querySet, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1 }
+        : undefined,
       colorAttachments: [
         {
           view: textureView,
@@ -156,6 +203,7 @@ export class Renderer {
     // Sky
     pass.setPipeline(this.skyPipeline);
     pass.draw(3);
+    stats.recordDraw(3, false);
 
     // Blocks
     pass.setPipeline(this.blockPipeline);
@@ -173,6 +221,7 @@ export class Renderer {
         if (mesh) {
           pass.setVertexBuffer(0, mesh.buffer);
           pass.draw(mesh.vertexCount);
+          stats.recordDraw(mesh.vertexCount, true);
         }
       }
     }
@@ -183,7 +232,35 @@ export class Renderer {
     }
 
     pass.end();
+
+    // 이전 프레임의 결과를 아직 읽는 중(mapAsync 대기)이면 readBuffer에 복사할 수 없다.
+    // 그 프레임은 건너뛴다 — GPU 시간은 몇 프레임에 한 번만 갱신돼도 충분하다.
+    const timer = this.gpuTimer;
+    const readTimer = timer !== null && timer.readBuffer.mapState === 'unmapped';
+    if (readTimer) {
+      encoder.resolveQuerySet(timer.querySet, 0, 2, timer.resolveBuffer, 0);
+      encoder.copyBufferToBuffer(timer.resolveBuffer, 0, timer.readBuffer, 0, 16);
+    }
+
     this.device.queue.submit([encoder.finish()]);
+
+    if (readTimer) this.readGpuTime(timer);
+  }
+
+  /**
+   * @description GPU가 찍은 패스 시작·끝 시각을 읽어 stats.gpuMs에 넣는 함수
+   *
+   * mapAsync는 GPU가 이 프레임의 명령을 끝낸 뒤에 resolve되므로, 값은 몇 프레임 늦게 도착한다.
+   * 시각은 나노초 단위 64비트 정수라 BigUint64Array로 읽는다.
+   * 브라우저는 보안상(타이밍 공격 방지) 시각을 일정 단위로 뭉개므로 아주 짧은 시간은 0이나 계단 값으로 보일 수 있다.
+   */
+  private readGpuTime(timer: GpuTimer) {
+    timer.readBuffer.mapAsync(GPUMapMode.READ).then(() => {
+      const times = new BigUint64Array(timer.readBuffer.getMappedRange());
+      // 드물게 끝 시각이 시작보다 작게 보고되는 기기가 있어 음수는 버린다.
+      if (times[1] >= times[0]) stats.gpuMs = Number(times[1] - times[0]) / 1_000_000;
+      timer.readBuffer.unmap();
+    });
   }
 
   /**
@@ -214,6 +291,7 @@ export class Renderer {
     pass.setBindGroup(0, this.highlightBindGroup);
     pass.setVertexBuffer(0, this.highlightBuffer);
     pass.draw(CUBE_EDGES.length / 3);
+    stats.recordDraw(CUBE_EDGES.length / 3, false);
   }
 
   /**
@@ -354,6 +432,21 @@ export class Renderer {
     });
   }
 
+  private createGpuTimer() {
+    // 시각 2개(시작, 끝) × 8바이트(64비트 정수)
+    this.gpuTimer = {
+      querySet: this.device.createQuerySet({ type: 'timestamp', count: 2 }),
+      resolveBuffer: this.device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC,
+      }),
+      readBuffer: this.device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+      }),
+    };
+  }
+
   /**
    * @description 아틀라스 PNG를 GPU 텍스처로 올리고 블록 파이프라인의 group 1에 묶는 함수
    *
@@ -404,7 +497,10 @@ export class Renderer {
     if (mesh) return mesh;
 
     const chunk = this.world.getChunk(cx, cz);
+    // 메싱 시간은 buildMesh(CPU에서 정점 배열을 만드는 일)만 잰다. 아래 GPU 버퍼 업로드는 포함하지 않는다.
+    const t0 = performance.now();
     const { vertices, vertexCount } = chunk.buildMesh();
+    stats.recordMesh(performance.now() - t0);
 
     if (vertexCount === 0) return null;
 
