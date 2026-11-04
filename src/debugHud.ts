@@ -38,7 +38,7 @@ export class DebugHud {
     else gpu = `GPU   ${ms(report.gpuMs)} ms`;
 
     this.el.textContent = [
-      `FPS   ${report.fps.toFixed(0)}  (max ${ms(report.frameMaxMs)} ms)`,
+      `frame ${ms(report.frameAvgMs)} ms  (max ${ms(report.frameMaxMs)})`,
       `CPU   ${ms(report.cpuAvgMs)} ms  (max ${ms(report.cpuMaxMs)})`,
       gpu,
       '',

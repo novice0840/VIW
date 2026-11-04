@@ -2,7 +2,7 @@
 const REPORT_INTERVAL_MS = 500;
 
 export interface StatsReport {
-  fps: number;
+  frameAvgMs: number;
   frameMaxMs: number;
   cpuAvgMs: number;
   cpuMaxMs: number;
@@ -20,8 +20,10 @@ export interface StatsReport {
  */
 class FrameStats {
   // 구간 동안 누적하는 값
-  // 평균 프레임 시간은 따로 모으지 않는다 — 구간 길이 / 프레임 수 = 1000 / FPS라서 FPS와 같은 정보다.
+  // FPS 대신 평균 프레임 시간(ms)을 보여 준다 — CPU·GPU와 단위가 같아야 위아래로 비교할 수 있다.
+  // (FPS = 1000 / 평균 프레임 시간이라 정보는 같다)
   private frames = 0;
+  private frameTotalMs = 0;
   private frameMaxMs = 0;
   private cpuTotalMs = 0;
   private cpuMaxMs = 0;
@@ -37,6 +39,7 @@ class FrameStats {
    */
   endFrame(frameMs: number, cpuMs: number) {
     this.frames++;
+    this.frameTotalMs += frameMs;
     this.frameMaxMs = Math.max(this.frameMaxMs, frameMs);
     this.cpuTotalMs += cpuMs;
     this.cpuMaxMs = Math.max(this.cpuMaxMs, cpuMs);
@@ -50,7 +53,7 @@ class FrameStats {
     if (elapsed < REPORT_INTERVAL_MS || this.frames === 0) return null;
 
     const report: StatsReport = {
-      fps: (this.frames * 1000) / elapsed,
+      frameAvgMs: this.frameTotalMs / this.frames,
       frameMaxMs: this.frameMaxMs,
       cpuAvgMs: this.cpuTotalMs / this.frames,
       cpuMaxMs: this.cpuMaxMs,
@@ -58,6 +61,7 @@ class FrameStats {
     };
 
     this.frames = 0;
+    this.frameTotalMs = 0;
     this.frameMaxMs = 0;
     this.cpuTotalMs = 0;
     this.cpuMaxMs = 0;
