@@ -136,6 +136,7 @@ async function main() {
     if (report) {
       debugHud.update(report, {
         position: player.position,
+        renderDistance: renderer.renderDistance,
         gpuTimingSupported: renderer.gpuTimingSupported,
       });
     }

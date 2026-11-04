@@ -3,6 +3,7 @@ import type { StatsReport } from './stats';
 
 export interface HudContext {
   position: Vec3;
+  renderDistance: number;
   gpuTimingSupported: boolean;
 }
 
@@ -41,7 +42,9 @@ export class DebugHud {
       `CPU   ${ms(report.cpuAvgMs)} ms  (max ${ms(report.cpuMaxMs)})`,
       gpu,
       '',
-      `XYZ   ${x.toFixed(1)} / ${y.toFixed(1)} / ${z.toFixed(1)}`,
+      // 성능 수치를 해석하려면 측정 조건이 함께 보여야 한다 — 그리는 청크 수가 (2r + 1)²로 정해진다.
+      `render distance ${ctx.renderDistance}`,
+      `XYZ  ${x.toFixed(1)} / ${y.toFixed(1)} / ${z.toFixed(1)}`,
     ].join('\n');
   }
 }
