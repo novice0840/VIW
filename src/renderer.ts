@@ -135,10 +135,6 @@ export class Renderer {
     );
   }
 
-  get cachedMeshCount(): number {
-    return this.chunkMeshes.size;
-  }
-
   get gpuTimingSupported(): boolean {
     return this.gpuTimer !== null;
   }
@@ -203,7 +199,6 @@ export class Renderer {
     // Sky
     pass.setPipeline(this.skyPipeline);
     pass.draw(3);
-    stats.recordDraw(3, false);
 
     // Blocks
     pass.setPipeline(this.blockPipeline);
@@ -221,7 +216,6 @@ export class Renderer {
         if (mesh) {
           pass.setVertexBuffer(0, mesh.buffer);
           pass.draw(mesh.vertexCount);
-          stats.recordDraw(mesh.vertexCount, true);
         }
       }
     }
@@ -291,7 +285,6 @@ export class Renderer {
     pass.setBindGroup(0, this.highlightBindGroup);
     pass.setVertexBuffer(0, this.highlightBuffer);
     pass.draw(CUBE_EDGES.length / 3);
-    stats.recordDraw(CUBE_EDGES.length / 3, false);
   }
 
   /**
@@ -497,10 +490,7 @@ export class Renderer {
     if (mesh) return mesh;
 
     const chunk = this.world.getChunk(cx, cz);
-    // 메싱 시간은 buildMesh(CPU에서 정점 배열을 만드는 일)만 잰다. 아래 GPU 버퍼 업로드는 포함하지 않는다.
-    const t0 = performance.now();
     const { vertices, vertexCount } = chunk.buildMesh();
-    stats.recordMesh(performance.now() - t0);
 
     if (vertexCount === 0) return null;
 

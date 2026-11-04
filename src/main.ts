@@ -123,7 +123,6 @@ async function main() {
     const frameMs = timestamp - lastTime;
     const dt = Math.min(frameMs / 1000, 0.1);
     lastTime = timestamp;
-    stats.beginFrame();
 
     player.update(dt);
     hotbar.update(player.selectedBlock);
@@ -137,9 +136,6 @@ async function main() {
     if (report) {
       debugHud.update(report, {
         position: player.position,
-        renderDistance: renderer.renderDistance,
-        loadedChunks: renderer.world.chunks.size,
-        cachedMeshes: renderer.cachedMeshCount,
         gpuTimingSupported: renderer.gpuTimingSupported,
       });
     }
