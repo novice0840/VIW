@@ -41,8 +41,129 @@ const SPAGHETTI_OFFSET_A = 71.3;
 const SPAGHETTI_OFFSET_B = 157.9;
 const SPAGHETTI_OFFSET_THICKNESS = 233.7;
 
-// position(3) + normal(3) + uv(2)
-export const FLOATS_PER_VERTEX = 8;
+// position(3) + normal(3) + uv(2) + ao(1)
+export const FLOATS_PER_VERTEX = 9;
+
+type Vec3i = [number, number, number];
+
+/**
+ * @description 면의 꼭짓점 하나 — 블록 원점 기준 위치(각 축 0 또는 1)와 면 안의 로컬 UV
+ */
+interface CornerSpec {
+  pos: Vec3i;
+  uv: [number, number];
+}
+
+/**
+ * @description 꼭짓점 하나의 AO를 정하는 이웃 칸 세 곳 (블록 기준 상대 좌표)
+ *
+ * 세 칸 모두 면 바깥 칸(블록 + 법선) 층에 있다. 그 층에서 꼭짓점 쪽으로
+ * 접선 축 하나씩 한 칸 간 것이 side1·side2, 두 축 모두 한 칸 간 대각선이 corner다.
+ */
+interface CornerAO {
+  side1: Vec3i;
+  side2: Vec3i;
+  corner: Vec3i;
+}
+
+interface FaceDef {
+  dir: Vec3i;
+  tile: 'top' | 'side' | 'bottom';
+  corners: CornerSpec[];
+  ao: CornerAO[];
+}
+
+/**
+ * @description 면 하나의 정의를 만들고, 꼭짓점마다 AO 조회 위치를 미리 계산하는 함수
+ *
+ * corners는 사각형을 한 바퀴 도는 순서(c0 → c1 → c2 → c3)여야 한다.
+ * 삼각형을 (0,1,2)(0,2,3) 또는 (1,2,3)(1,3,0)으로 잘라도 감김 방향이 같아야
+ * 대각선을 뒤집어도 back-face culling에 걸리지 않는다.
+ *
+ * AO 조회 위치는 면과 꼭짓점만으로 정해지므로 정점마다 계산하지 않고 모듈 로드 때 한 번만 만든다.
+ */
+function defineFace(dir: Vec3i, tile: FaceDef['tile'], corners: CornerSpec[]): FaceDef {
+  // 법선이 0인 두 축이 면을 따라 뻗는 접선 축이다.
+  const [a, b] = [0, 1, 2].filter((axis) => dir[axis] === 0);
+  const ao = corners.map(({ pos }) => {
+    // 꼭짓점 좌표가 1이면 그 축의 + 쪽, 0이면 - 쪽 이웃을 본다.
+    const sa = pos[a] * 2 - 1;
+    const sb = pos[b] * 2 - 1;
+    const side1: Vec3i = [...dir];
+    side1[a] += sa;
+    const side2: Vec3i = [...dir];
+    side2[b] += sb;
+    const corner: Vec3i = [...dir];
+    corner[a] += sa;
+    corner[b] += sb;
+    return { side1, side2, corner };
+  });
+  return { dir, tile, corners, ao };
+}
+
+// atlasUV의 (u, v)는 면 안에서의 로컬 좌표(0~1)로,
+// 면을 바깥에서 바라봤을 때 u는 왼쪽→오른쪽, v는 위→아래로 커진다.
+// 옆면의 v는 블록 윗변이 0, 아랫변이 1 — 잔디 옆면의 풀이 위쪽에 오게 된다.
+// 꼭짓점 순서는 바깥에서 봤을 때 시계 반대 방향(CCW) 삼각형이 나오도록 정했다 — 파이프라인의 front face다.
+const FACES: FaceDef[] = [
+  // +Y (top)
+  defineFace([0, 1, 0], 'top', [
+    { pos: [0, 1, 0], uv: [0, 0] },
+    { pos: [0, 1, 1], uv: [0, 1] },
+    { pos: [1, 1, 1], uv: [1, 1] },
+    { pos: [1, 1, 0], uv: [1, 0] },
+  ]),
+  // -Y (bottom)
+  defineFace([0, -1, 0], 'bottom', [
+    { pos: [0, 0, 1], uv: [0, 1] },
+    { pos: [0, 0, 0], uv: [0, 0] },
+    { pos: [1, 0, 0], uv: [1, 0] },
+    { pos: [1, 0, 1], uv: [1, 1] },
+  ]),
+  // +X (right) — 바깥에서 보면 오른쪽이 -Z
+  defineFace([1, 0, 0], 'side', [
+    { pos: [1, 0, 0], uv: [1, 1] },
+    { pos: [1, 1, 0], uv: [1, 0] },
+    { pos: [1, 1, 1], uv: [0, 0] },
+    { pos: [1, 0, 1], uv: [0, 1] },
+  ]),
+  // -X (left) — 바깥에서 보면 오른쪽이 +Z
+  defineFace([-1, 0, 0], 'side', [
+    { pos: [0, 0, 1], uv: [1, 1] },
+    { pos: [0, 1, 1], uv: [1, 0] },
+    { pos: [0, 1, 0], uv: [0, 0] },
+    { pos: [0, 0, 0], uv: [0, 1] },
+  ]),
+  // +Z (front) — 바깥에서 보면 오른쪽이 +X
+  defineFace([0, 0, 1], 'side', [
+    { pos: [1, 0, 1], uv: [1, 1] },
+    { pos: [1, 1, 1], uv: [1, 0] },
+    { pos: [0, 1, 1], uv: [0, 0] },
+    { pos: [0, 0, 1], uv: [0, 1] },
+  ]),
+  // -Z (back) — 바깥에서 보면 오른쪽이 -X
+  defineFace([0, 0, -1], 'side', [
+    { pos: [0, 0, 0], uv: [1, 1] },
+    { pos: [0, 1, 0], uv: [1, 0] },
+    { pos: [1, 1, 0], uv: [0, 0] },
+    { pos: [1, 0, 0], uv: [0, 1] },
+  ]),
+];
+
+// 사각형을 삼각형 두 개로 자르는 두 방법. 숫자는 corners의 인덱스다.
+const SPLIT_02 = [0, 1, 2, 0, 2, 3]; // 대각선 c0–c2
+const SPLIT_13 = [1, 2, 3, 1, 3, 0]; // 대각선 c1–c3
+
+/**
+ * @description 꼭짓점 하나의 AO 단계를 구하는 함수 (0 = 가장 어두움, 3 = 가려지지 않음)
+ *
+ * 옆 칸 두 개가 모두 막혀 있으면 대각선 칸과 상관없이 0이다. 두 옆 칸이 막히면
+ * 대각선 칸은 그 사이에 갇혀 보이지 않으므로, 대각선만 비었다고 밝아지면 안 된다.
+ */
+function vertexAO(side1: boolean, side2: boolean, corner: boolean): number {
+  if (side1 && side2) return 0;
+  return 3 - (Number(side1) + Number(side2) + Number(corner));
+}
 
 /**
  * @description 타일 번호와 타일 안의 로컬 좌표(0~1)를 아틀라스 전체 기준 UV로 바꾸는 함수
@@ -170,84 +291,29 @@ export class Chunk {
           const wx = this.cx * CHUNK_SIZE + x;
           const wz = this.cz * CHUNK_SIZE + z;
 
-          // Check 6 faces: +X, -X, +Y, -Y, +Z, -Z
-          // Each face: 2 triangles = 6 vertices
-          // Vertex: position(3) + normal(3) + uv(2)
-          // atlasUV의 (u, v)는 면 안에서의 로컬 좌표(0~1)로,
-          // 면을 바깥에서 바라봤을 때 u는 왼쪽→오른쪽, v는 위→아래로 커진다.
-          // 옆면의 v는 블록 윗변이 0, 아랫변이 1 — 잔디 옆면의 풀이 위쪽에 오게 된다.
+          for (const face of FACES) {
+            const [nx, ny, nz] = face.dir;
+            // 맞닿은 칸이 비어 있어야 면이 보인다. 월드 맨 아래(y = -1)는 getBlock이 Air를 돌려줘 그려진다.
+            if (!isTransparent(this.getBlock(x + nx, y + ny, z + nz))) continue;
 
-          // +Y (top)
-          if (isTransparent(this.getBlock(x, y + 1, z))) {
-            const t = tiles.top;
-            const n = [0, 1, 0];
-            // vertex 6개로 삼각형 2개를 만들어 사각형 1개를 채우는 로직
-            verts.push(wx, y + 1, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx + 1, y + 1, wz, ...n, ...atlasUV(t, 1, 0));
-            verts.push(wx, y + 1, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx, y + 1, wz + 1, ...n, ...atlasUV(t, 0, 1));
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...atlasUV(t, 1, 1));
-          }
+            const ao = face.ao.map(({ side1, side2, corner }) =>
+              vertexAO(
+                this.occludes(x, y, z, side1),
+                this.occludes(x, y, z, side2),
+                this.occludes(x, y, z, corner),
+              ),
+            );
 
-          // -Y (bottom)
-          if (y === 0 || isTransparent(this.getBlock(x, y - 1, z))) {
-            const t = tiles.bottom;
-            const n = [0, -1, 0];
-            verts.push(wx, y, wz + 1, ...n, ...atlasUV(t, 0, 1));
-            verts.push(wx + 1, y, wz, ...n, ...atlasUV(t, 1, 0));
-            verts.push(wx + 1, y, wz + 1, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx, y, wz + 1, ...n, ...atlasUV(t, 0, 1));
-            verts.push(wx, y, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx + 1, y, wz, ...n, ...atlasUV(t, 1, 0));
-          }
+            // 대각선은 AO 합이 작은(더 어두운) 두 꼭짓점을 잇는다. 반대로 자르면 어두운 꼭짓점
+            // 하나의 그늘이 삼각형 하나에만 번져 대각선을 따라 꺾인 띠가 생긴다.
+            const split = ao[0] + ao[2] > ao[1] + ao[3] ? SPLIT_13 : SPLIT_02;
+            const t = tiles[face.tile];
 
-          // +X (right) — 바깥에서 보면 오른쪽이 -Z
-          if (isTransparent(this.getBlock(x + 1, y, z))) {
-            const t = tiles.side;
-            const n = [1, 0, 0];
-            verts.push(wx + 1, y, wz, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx + 1, y + 1, wz, ...n, ...atlasUV(t, 1, 0));
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx + 1, y, wz, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx + 1, y, wz + 1, ...n, ...atlasUV(t, 0, 1));
-          }
-
-          // -X (left) — 바깥에서 보면 오른쪽이 +Z
-          if (isTransparent(this.getBlock(x - 1, y, z))) {
-            const t = tiles.side;
-            const n = [-1, 0, 0];
-            verts.push(wx, y, wz + 1, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx, y + 1, wz + 1, ...n, ...atlasUV(t, 1, 0));
-            verts.push(wx, y + 1, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx, y, wz + 1, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx, y + 1, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx, y, wz, ...n, ...atlasUV(t, 0, 1));
-          }
-
-          // +Z (front) — 바깥에서 보면 오른쪽이 +X
-          if (isTransparent(this.getBlock(x, y, z + 1))) {
-            const t = tiles.side;
-            const n = [0, 0, 1];
-            verts.push(wx + 1, y, wz + 1, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx + 1, y + 1, wz + 1, ...n, ...atlasUV(t, 1, 0));
-            verts.push(wx, y + 1, wz + 1, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx + 1, y, wz + 1, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx, y + 1, wz + 1, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx, y, wz + 1, ...n, ...atlasUV(t, 0, 1));
-          }
-
-          // -Z (back) — 바깥에서 보면 오른쪽이 -X
-          if (isTransparent(this.getBlock(x, y, z - 1))) {
-            const t = tiles.side;
-            const n = [0, 0, -1];
-            verts.push(wx, y, wz, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx, y + 1, wz, ...n, ...atlasUV(t, 1, 0));
-            verts.push(wx + 1, y + 1, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx, y, wz, ...n, ...atlasUV(t, 1, 1));
-            verts.push(wx + 1, y + 1, wz, ...n, ...atlasUV(t, 0, 0));
-            verts.push(wx + 1, y, wz, ...n, ...atlasUV(t, 0, 1));
+            // 정점 6개로 삼각형 2개를 만들어 사각형 1개를 채운다.
+            for (const i of split) {
+              const { pos, uv } = face.corners[i];
+              verts.push(wx + pos[0], y + pos[1], wz + pos[2], nx, ny, nz, ...atlasUV(t, uv[0], uv[1]), ao[i]);
+            }
           }
         }
       }
@@ -257,6 +323,15 @@ export class Chunk {
     // verts는 그냥 숫자를 쭉 이어붙인 평평한 배열이라 길이가 "float 개수"지 "정점 개수"가 아니다.
     // 정점 하나의 float 수로 나누어야 실제 정점 수가 나온다.
     return { vertices, vertexCount: verts.length / FLOATS_PER_VERTEX };
+  }
+
+  /**
+   * @description 블록 (x, y, z)에서 offset만큼 떨어진 칸이 빛을 가리는지 반환하는 함수
+   *
+   * 청크 밖은 getBlock이 Air로 돌려주므로 청크 경계의 꼭짓점은 덜 어둡게 나온다 (이슈 범위 밖).
+   */
+  private occludes(x: number, y: number, z: number, offset: Vec3i): boolean {
+    return !isTransparent(this.getBlock(x + offset[0], y + offset[1], z + offset[2]));
   }
 
   private idx(x: number, y: number, z: number): number {
