@@ -160,7 +160,7 @@ const SPLIT_13 = [1, 2, 3, 1, 3, 0]; // 대각선 c1–c3
  * 옆 칸 두 개가 모두 막혀 있으면 대각선 칸과 상관없이 0이다. 두 옆 칸이 막히면
  * 대각선 칸은 그 사이에 갇혀 보이지 않으므로, 대각선만 비었다고 밝아지면 안 된다.
  */
-function vertexAO(side1: boolean, side2: boolean, corner: boolean): number {
+export function vertexAO(side1: boolean, side2: boolean, corner: boolean): number {
   if (side1 && side2) return 0;
   return 3 - (Number(side1) + Number(side2) + Number(corner));
 }
