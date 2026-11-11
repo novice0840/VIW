@@ -1,5 +1,6 @@
 import { ATLAS_GRID, BlockType, BLOCK_TILES, isTransparent } from './block';
 import { fbm, hash2d, noise3d } from './noise';
+import type { Vec3 } from './math';
 
 export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
@@ -44,13 +45,11 @@ const SPAGHETTI_OFFSET_THICKNESS = 233.7;
 // position(3) + normal(3) + uv(2) + ao(1)
 export const FLOATS_PER_VERTEX = 9;
 
-type Vec3i = [number, number, number];
-
 /**
  * @description 면의 꼭짓점 하나 — 블록 원점 기준 위치(각 축 0 또는 1)와 면 안의 로컬 UV
  */
 interface CornerSpec {
-  pos: Vec3i;
+  pos: Vec3;
   uv: [number, number];
 }
 
@@ -61,13 +60,13 @@ interface CornerSpec {
  * 접선 축 하나씩 한 칸 간 것이 side1·side2, 두 축 모두 한 칸 간 대각선이 corner다.
  */
 interface CornerAO {
-  side1: Vec3i;
-  side2: Vec3i;
-  corner: Vec3i;
+  side1: Vec3;
+  side2: Vec3;
+  corner: Vec3;
 }
 
 interface FaceDef {
-  dir: Vec3i;
+  dir: Vec3;
   tile: 'top' | 'side' | 'bottom';
   corners: CornerSpec[];
   ao: CornerAO[];
@@ -82,18 +81,18 @@ interface FaceDef {
  *
  * AO 조회 위치는 면과 꼭짓점만으로 정해지므로 정점마다 계산하지 않고 모듈 로드 때 한 번만 만든다.
  */
-function defineFace(dir: Vec3i, tile: FaceDef['tile'], corners: CornerSpec[]): FaceDef {
+function defineFace(dir: Vec3, tile: FaceDef['tile'], corners: CornerSpec[]): FaceDef {
   // 법선이 0인 두 축이 면을 따라 뻗는 접선 축이다.
   const [a, b] = [0, 1, 2].filter((axis) => dir[axis] === 0);
   const ao = corners.map(({ pos }) => {
     // 꼭짓점 좌표가 1이면 그 축의 + 쪽, 0이면 - 쪽 이웃을 본다.
     const sa = pos[a] * 2 - 1;
     const sb = pos[b] * 2 - 1;
-    const side1: Vec3i = [...dir];
+    const side1: Vec3 = [...dir];
     side1[a] += sa;
-    const side2: Vec3i = [...dir];
+    const side2: Vec3 = [...dir];
     side2[b] += sb;
-    const corner: Vec3i = [...dir];
+    const corner: Vec3 = [...dir];
     corner[a] += sa;
     corner[b] += sb;
     return { side1, side2, corner };
@@ -330,7 +329,7 @@ export class Chunk {
    *
    * 청크 밖은 getBlock이 Air로 돌려주므로 청크 경계의 꼭짓점은 덜 어둡게 나온다 (이슈 범위 밖).
    */
-  private occludes(x: number, y: number, z: number, offset: Vec3i): boolean {
+  private occludes(x: number, y: number, z: number, offset: Vec3): boolean {
     return !isTransparent(this.getBlock(x + offset[0], y + offset[1], z + offset[2]));
   }
 
