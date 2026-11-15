@@ -83,6 +83,7 @@ struct VertexInput {
   @location(0) position : vec3<f32>,
   @location(1) normal   : vec3<f32>,
   @location(2) uv       : vec2<f32>,
+  @location(3) ao       : f32, // 0 = 가장 많이 가려짐, 3 = 가려지지 않음
 };
 
 struct VertexOutput {
@@ -90,7 +91,11 @@ struct VertexOutput {
   @location(0)       worldPos : vec3<f32>,
   @location(1)       normal   : vec3<f32>,
   @location(2)       uv       : vec2<f32>,
+  @location(3)       ao       : f32, // 밝기 배율. 면을 가로질러 보간되어 그라데이션이 된다
 };
+
+// AO가 가장 어두운 단계(0)일 때의 밝기 배율. 3단계는 1.0이고 그 사이는 선형이다.
+const AO_MIN = 0.5;
 
 // 학습 노트 
 // vertex shader function
@@ -109,6 +114,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
   out.worldPos = in.position;
   out.normal   = in.normal;
   out.uv       = in.uv;
+  // 단계를 배율로 바꾸는 일은 정점마다 한 번이면 된다 — 픽셀마다 하면 같은 계산을 수만 번 반복한다.
+  out.ao       = mix(AO_MIN, 1.0, in.ao / 3.0);
   return out;
 }
 
@@ -127,7 +134,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let nDotL = max(dot(in.normal, global.sunDir), 0.0);
   let ambient = 0.35;
   let diffuse = nDotL * 0.65;
-  let lighting = ambient + diffuse;
+  // AO는 주변 블록에 가려진 정도라 빛의 방향과 상관없이 전체 밝기에 곱한다.
+  let lighting = (ambient + diffuse) * in.ao;
 
   // uv는 정점 사이에서 보간되어 들어오므로 픽셀마다 아틀라스의 다른 텍셀을 읽는다.
   let albedo = textureSample(atlasTexture, atlasSampler, in.uv).rgb;

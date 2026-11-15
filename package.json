@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "gen:textures": "node tools/gen-textures.mjs public/textures"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.52",
     "typescript": "^5.7.0",
     "vite": "^8.0.16",
-    "vite-plugin-string": "^1.2.3"
+    "vite-plugin-string": "^1.2.3",
+    "vitest": "^5.1.0"
   }
 }

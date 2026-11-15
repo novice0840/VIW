@@ -327,11 +327,15 @@ export class Renderer {
         entryPoint: 'vs_main',
         buffers: [
           {
-            arrayStride: FLOATS_PER_VERTEX * 4, // position(3) + normal(3) + uv(2) = 8 floats * 4 bytes
+            // position(3) + normal(3) + uv(2) + ao(1) = 9 floats * 4 bytes
+            // offset은 앞 속성들의 바이트 크기 합이다. 속성을 추가하면 chunk.ts의 push 순서,
+            // FLOATS_PER_VERTEX, 셰이더의 @location을 함께 맞춰야 한다.
+            arrayStride: FLOATS_PER_VERTEX * 4,
             attributes: [
-              { shaderLocation: 0, offset: 0, format: 'float32x3' },
-              { shaderLocation: 1, offset: 12, format: 'float32x3' },
-              { shaderLocation: 2, offset: 24, format: 'float32x2' },
+              { shaderLocation: 0, offset: 0, format: 'float32x3' }, // position
+              { shaderLocation: 1, offset: 12, format: 'float32x3' }, // normal
+              { shaderLocation: 2, offset: 24, format: 'float32x2' }, // uv
+              { shaderLocation: 3, offset: 32, format: 'float32' }, // ao (0–3)
             ],
           },
         ],
