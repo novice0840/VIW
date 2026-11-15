@@ -5,6 +5,7 @@ export interface HudContext {
   position: Vec3;
   renderDistance: number;
   gpuTimingSupported: boolean;
+  seed: number;
 }
 
 function ms(v: number): string {
@@ -47,6 +48,8 @@ export class DebugHud {
       // 성능 수치를 해석하려면 측정 조건이 함께 보여야 한다 — 그리는 청크 수가 (2r + 1)²로 정해진다.
       `render distance ${ctx.renderDistance}`,
       `XYZ  ${x.toFixed(1)} / ${y.toFixed(1)} / ${z.toFixed(1)}`,
+      // 마음에 드는 지형을 ?seed= 로 다시 열 수 있게 보여 준다.
+      `seed ${ctx.seed}`,
     ].join('\n');
   }
 }

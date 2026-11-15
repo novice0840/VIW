@@ -6,6 +6,8 @@ import { WORLD_HEIGHT } from './chunk';
 import { Hotbar } from './hotbar';
 import { DebugHud } from './debugHud';
 import { stats } from './stats';
+import { World } from './world';
+import { parseSeed, randomSeed } from './seed';
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
@@ -32,8 +34,12 @@ async function main() {
   // 플레이어의 물리·입력과 1인칭 시점을 함께 담당
   const player = new Player();
 
+  // 월드 목록 화면(#22)이 생기기 전까지는 주소의 ?seed= 값으로 월드를 고른다. 없으면 무작위.
+  const seedParam = new URLSearchParams(location.search).get('seed');
+  const world = new World((seedParam !== null ? parseSeed(seedParam) : null) ?? randomSeed());
+
   try {
-    await renderer.init(canvas);
+    await renderer.init(canvas, world);
   } catch (e) {
     document.getElementById('no-webgpu')!.style.display = 'block';
     console.error(e);
@@ -137,6 +143,7 @@ async function main() {
       debugHud.update(report, {
         position: player.position,
         renderDistance: renderer.renderDistance,
+        seed: world.seed,
         gpuTimingSupported: renderer.gpuTimingSupported,
       });
     }
