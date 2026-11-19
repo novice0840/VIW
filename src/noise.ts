@@ -1,26 +1,4 @@
-// Simplex-like 2D noise for terrain generation
-// Based on improved Perlin noise
-
-const P = new Uint8Array(512);
-const PERM = [
-  151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
-  8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,
-  117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,
-  165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,
-  105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,
-  187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,
-  64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,
-  227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,
-  221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,
-  178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,
-  241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,
-  176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,
-  128,195,78,66,215,61,156,180,
-];
-for (let i = 0; i < 256; i++) {
-  P[i] = PERM[i];
-  P[256 + i] = PERM[i];
-}
+// 지형 생성용 Perlin 노이즈 (improved Perlin noise 기반)
 
 function fade(t: number): number {
   return t * t * t * (t * (t * 6 - 15) + 10);
@@ -37,27 +15,6 @@ function grad2d(hash: number, x: number, y: number): number {
   return u + v;
 }
 
-export function noise2d(x: number, y: number): number {
-  const xi = Math.floor(x) & 255;
-  const yi = Math.floor(y) & 255;
-  const xf = x - Math.floor(x);
-  const yf = y - Math.floor(y);
-
-  const u = fade(xf);
-  const v = fade(yf);
-
-  const aa = P[P[xi] + yi];
-  const ab = P[P[xi] + yi + 1];
-  const ba = P[P[xi + 1] + yi];
-  const bb = P[P[xi + 1] + yi + 1];
-
-  return lerp(
-    lerp(grad2d(aa, xf, yf), grad2d(ba, xf - 1, yf), u),
-    lerp(grad2d(ab, xf, yf - 1), grad2d(bb, xf - 1, yf - 1), u),
-    v,
-  );
-}
-
 /**
  * @description 3D 격자 꼭짓점의 기울기 벡터와 거리 벡터 (x, y, z)의 내적
  *
@@ -72,40 +29,20 @@ function grad3d(hash: number, x: number, y: number, z: number): number {
 }
 
 /**
- * @description 3D Perlin 노이즈. 대략 -1 ~ 1 사이 값을 매끄럽게 돌려준다
+ * @description 시드 하나로 [0, 1) 난수를 차례로 뽑는 의사난수 생성기 (mulberry32)
  *
- * noise2d와 원리는 같고 축이 하나 늘었다 — 점을 둘러싼 격자 꼭짓점이 4개에서 8개가 되고,
- * 보간도 x → y 두 번에서 x → y → z 세 번이 된다.
+ * Math.random()은 시드를 줄 수 없어서, 같은 시드로 같은 월드를 다시 만들 수 없다.
+ * 이 함수는 상태가 32비트 정수 하나뿐이라 같은 시드면 항상 같은 수열이 나온다.
  */
-export function noise3d(x: number, y: number, z: number): number {
-  const xi = Math.floor(x) & 255;
-  const yi = Math.floor(y) & 255;
-  const zi = Math.floor(z) & 255;
-  const xf = x - Math.floor(x);
-  const yf = y - Math.floor(y);
-  const zf = z - Math.floor(z);
-
-  const u = fade(xf);
-  const v = fade(yf);
-  const w = fade(zf);
-
-  // 꼭짓점 8개의 해시. 이름의 세 글자는 각각 x, y, z 쪽에서 a = 작은 쪽, b = 큰 쪽.
-  const aaa = P[P[P[xi] + yi] + zi];
-  const aba = P[P[P[xi] + yi + 1] + zi];
-  const aab = P[P[P[xi] + yi] + zi + 1];
-  const abb = P[P[P[xi] + yi + 1] + zi + 1];
-  const baa = P[P[P[xi + 1] + yi] + zi];
-  const bba = P[P[P[xi + 1] + yi + 1] + zi];
-  const bab = P[P[P[xi + 1] + yi] + zi + 1];
-  const bbb = P[P[P[xi + 1] + yi + 1] + zi + 1];
-
-  // x 방향으로 4쌍을 보간 → y 방향으로 2쌍 → z 방향으로 1쌍
-  const x1 = lerp(grad3d(aaa, xf, yf, zf), grad3d(baa, xf - 1, yf, zf), u);
-  const x2 = lerp(grad3d(aba, xf, yf - 1, zf), grad3d(bba, xf - 1, yf - 1, zf), u);
-  const x3 = lerp(grad3d(aab, xf, yf, zf - 1), grad3d(bab, xf - 1, yf, zf - 1), u);
-  const x4 = lerp(grad3d(abb, xf, yf - 1, zf - 1), grad3d(bbb, xf - 1, yf - 1, zf - 1), u);
-
-  return lerp(lerp(x1, x2, v), lerp(x3, x4, v), w);
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /**
@@ -113,9 +50,9 @@ export function noise3d(x: number, y: number, z: number): number {
  *
  * 같은 입력에는 항상 같은 값을 돌려준다 — 청크를 언제 어떤 순서로 생성해도
  * 결과가 같아야 하므로 Math.random() 대신 이걸 쓴다.
- * noise2d와 달리 이웃 좌표끼리 값이 전혀 닮지 않는다 (매끄러움이 없는 "흩뿌리기"용).
+ * Perlin 노이즈와 달리 이웃 좌표끼리 값이 전혀 닮지 않는다 (매끄러움이 없는 "흩뿌리기"용).
  *
- * seed를 바꾸면 같은 좌표에서 서로 독립적인 값을 여러 개 뽑을 수 있다 (배치 여부, 높이 등).
+ * seed를 바꾸면 같은 좌표에서 서로 독립적인 값을 여러 개 뽑을 수 있다.
  */
 export function hash2d(x: number, z: number, seed = 0): number {
   // 좌표마다 다른 큰 홀수를 곱해 섞은 뒤, murmur3의 finalizer로 비트를 골고루 흩뜨린다.
@@ -128,16 +65,116 @@ export function hash2d(x: number, z: number, seed = 0): number {
   return (h >>> 0) / 4294967296;
 }
 
-export function fbm(x: number, y: number, octaves: number, lacunarity: number, gain: number): number {
-  let sum = 0;
-  let amp = 1;
-  let freq = 1;
-  let max = 0;
-  for (let i = 0; i < octaves; i++) {
-    sum += noise2d(x * freq, y * freq) * amp;
-    max += amp;
-    amp *= gain;
-    freq *= lacunarity;
+/**
+ * @description 월드 시드 하나로 만든 노이즈 묶음 — 한 월드의 지형은 모두 이 인스턴스에서 나온다
+ *
+ * Perlin 노이즈의 모양은 순열표(0–255를 섞은 표)가 정한다. 격자 꼭짓점마다 이 표로
+ * 기울기 방향을 고르기 때문에, 표를 다르게 섞으면 같은 좌표에서도 전혀 다른 지형이 나온다.
+ * 그래서 시드로 순열표를 섞는 것만으로 월드마다 다른 지형을 얻는다.
+ *
+ * 좌표와 시드만 보고 답하는 순수한 계산이라 브라우저 API에 의존하지 않는다 —
+ * 나중에 서버에서 같은 시드로 같은 지형을 만들 수 있다.
+ */
+export class Noise {
+  // 순열표를 두 번 이어 붙인 512칸. P[P[xi] + yi]처럼 더한 인덱스가 255를 넘어도 % 없이 읽을 수 있다.
+  private readonly p = new Uint8Array(512);
+
+  constructor(readonly seed: number) {
+    const perm = Array.from({ length: 256 }, (_, i) => i);
+    const random = mulberry32(seed);
+    // Fisher–Yates 셔플: 뒤에서부터 남은 칸 중 하나와 자리를 바꾼다. 모든 순열이 같은 확률로 나온다.
+    for (let i = 255; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
+    for (let i = 0; i < 256; i++) {
+      this.p[i] = perm[i];
+      this.p[256 + i] = perm[i];
+    }
   }
-  return sum / max;
+
+  noise2d(x: number, y: number): number {
+    const P = this.p;
+    const xi = Math.floor(x) & 255;
+    const yi = Math.floor(y) & 255;
+    const xf = x - Math.floor(x);
+    const yf = y - Math.floor(y);
+
+    const u = fade(xf);
+    const v = fade(yf);
+
+    const aa = P[P[xi] + yi];
+    const ab = P[P[xi] + yi + 1];
+    const ba = P[P[xi + 1] + yi];
+    const bb = P[P[xi + 1] + yi + 1];
+
+    return lerp(
+      lerp(grad2d(aa, xf, yf), grad2d(ba, xf - 1, yf), u),
+      lerp(grad2d(ab, xf, yf - 1), grad2d(bb, xf - 1, yf - 1), u),
+      v,
+    );
+  }
+
+  /**
+   * @description 3D Perlin 노이즈. 대략 -1 ~ 1 사이 값을 매끄럽게 돌려준다
+   *
+   * noise2d와 원리는 같고 축이 하나 늘었다 — 점을 둘러싼 격자 꼭짓점이 4개에서 8개가 되고,
+   * 보간도 x → y 두 번에서 x → y → z 세 번이 된다.
+   */
+  noise3d(x: number, y: number, z: number): number {
+    const P = this.p;
+    const xi = Math.floor(x) & 255;
+    const yi = Math.floor(y) & 255;
+    const zi = Math.floor(z) & 255;
+    const xf = x - Math.floor(x);
+    const yf = y - Math.floor(y);
+    const zf = z - Math.floor(z);
+
+    const u = fade(xf);
+    const v = fade(yf);
+    const w = fade(zf);
+
+    // 꼭짓점 8개의 해시. 이름의 세 글자는 각각 x, y, z 쪽에서 a = 작은 쪽, b = 큰 쪽.
+    const aaa = P[P[P[xi] + yi] + zi];
+    const aba = P[P[P[xi] + yi + 1] + zi];
+    const aab = P[P[P[xi] + yi] + zi + 1];
+    const abb = P[P[P[xi] + yi + 1] + zi + 1];
+    const baa = P[P[P[xi + 1] + yi] + zi];
+    const bba = P[P[P[xi + 1] + yi + 1] + zi];
+    const bab = P[P[P[xi + 1] + yi] + zi + 1];
+    const bbb = P[P[P[xi + 1] + yi + 1] + zi + 1];
+
+    // x 방향으로 4쌍을 보간 → y 방향으로 2쌍 → z 방향으로 1쌍
+    const x1 = lerp(grad3d(aaa, xf, yf, zf), grad3d(baa, xf - 1, yf, zf), u);
+    const x2 = lerp(grad3d(aba, xf, yf - 1, zf), grad3d(bba, xf - 1, yf - 1, zf), u);
+    const x3 = lerp(grad3d(aab, xf, yf, zf - 1), grad3d(bab, xf - 1, yf, zf - 1), u);
+    const x4 = lerp(grad3d(abb, xf, yf - 1, zf - 1), grad3d(bbb, xf - 1, yf - 1, zf - 1), u);
+
+    return lerp(lerp(x1, x2, v), lerp(x3, x4, v), w);
+  }
+
+  fbm(x: number, y: number, octaves: number, lacunarity: number, gain: number): number {
+    let sum = 0;
+    let amp = 1;
+    let freq = 1;
+    let max = 0;
+    for (let i = 0; i < octaves; i++) {
+      sum += this.noise2d(x * freq, y * freq) * amp;
+      max += amp;
+      amp *= gain;
+      freq *= lacunarity;
+    }
+    return sum / max;
+  }
+
+  /**
+   * @description 이 월드에서 정수 좌표 (x, z)의 [0, 1) 의사난수를 뽑는 함수
+   * @param channel 같은 좌표에서 서로 독립적인 값을 여러 개 뽑기 위한 번호 (배치 여부, 높이 등)
+   *
+   * 월드 시드와 channel을 섞어 hash2d의 seed로 쓴다. 섞지 않고 channel만 넘기면
+   * 지형은 월드마다 달라도 나무 배치 패턴은 모든 월드에서 같아진다.
+   */
+  hash2d(x: number, z: number, channel: number): number {
+    return hash2d(x, z, this.seed ^ Math.imul(channel, 0x632be5ab));
+  }
 }

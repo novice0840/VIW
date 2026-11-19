@@ -96,7 +96,11 @@ export class Renderer {
   // 플레이어 주변 몇 청크까지 생성하고 그릴지 (반지름). 디버그용으로 키를 눌러 바꿀 수 있다.
   renderDistance = 8;
 
-  async init(canvas: HTMLCanvasElement) {
+  /**
+   * @param world 그릴 월드. 어떤 월드(시드)를 열지는 렌더러가 아니라 게임 시작 흐름이 정한다.
+   */
+  async init(canvas: HTMLCanvasElement, world: World) {
+    this.world = world;
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw new Error('No WebGPU adapter');
     // timestamp-query는 선택 기능이라 어댑터가 지원할 때만 device 생성 시 요청할 수 있다.
@@ -119,8 +123,6 @@ export class Renderer {
     this.createPipelines();
     this.createUniformBuffers();
     await this.createAtlas();
-
-    this.world = new World();
   }
 
   onResize(w: number, h: number) {

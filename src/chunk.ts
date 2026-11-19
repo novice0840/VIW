@@ -1,5 +1,5 @@
 import { ATLAS_GRID, BlockType, BLOCK_TILES, isTransparent } from './block';
-import { fbm, hash2d, noise3d } from './noise';
+import type { Noise } from './noise';
 import type { Vec3 } from './math';
 
 export const CHUNK_SIZE = 16;
@@ -16,9 +16,9 @@ const TREE_MAX_TRUNK = 6;
 const LEAF_RADIUS = 2;
 // 나무 기둥끼리 이 칸 수보다 가까우면 심지 않는다 (가로·세로 중 큰 쪽 기준)
 const TREE_MIN_GAP = 4;
-// hash2d에서 서로 독립적인 값을 뽑기 위한 seed
-const SEED_TREE_PLACE = 1;
-const SEED_TREE_HEIGHT = 2;
+// Noise.hash2d에서 같은 좌표의 서로 독립적인 값을 뽑기 위한 channel
+const CHANNEL_TREE_PLACE = 1;
+const CHANNEL_TREE_HEIGHT = 2;
 
 // 치즈 동굴: 노이즈 값이 임계값을 넘는 곳을 비운다. 임계값이 클수록 cavern이 작고 드물다.
 const CHEESE_THRESHOLD = 0.4;
@@ -37,7 +37,7 @@ const SPAGHETTI_THICKNESS_SCALE = 0.012;
 // 스케일을 줄이면 터널 전체가 확대된다 — 굵어지는 대신 드물어져서, 폭만 키울 때보다 지하가 덜 빈다.
 const SPAGHETTI_SCALE_XZ = 0.02;
 const SPAGHETTI_SCALE_Y = 0.035;
-// noise3d에는 seed가 없으므로, 좌표를 멀리 밀어서 서로 무관한 노이즈 두 개를 얻는다.
+// 한 월드의 노이즈는 순열표가 하나뿐이므로, 좌표를 멀리 밀어서 서로 무관한 노이즈 두 개를 얻는다.
 const SPAGHETTI_OFFSET_A = 71.3;
 const SPAGHETTI_OFFSET_B = 157.9;
 const SPAGHETTI_OFFSET_THICKNESS = 233.7;
@@ -200,9 +200,10 @@ function surfaceBlock(height: number): BlockType {
 
 /**
  * @description 월드 좌표 (wx, y, wz)가 동굴(파낼 칸)인지 판정하는 함수
+ * @param noise 이 월드의 노이즈
  * @param ground 이 기둥의 지형 높이. 지표 위(y >= ground)는 이미 공기라 동굴이 아니다.
  *
- * 좌표와 지형 높이만 보고 답하는 순수 함수다. 블록 배열을 읽지 않으므로, 동굴을 파는
+ * 좌표, 지형 높이, 월드 노이즈만 보고 답하는 순수 함수다. 블록 배열을 읽지 않으므로, 동굴을 파는
  * 단계든 나무를 심는 단계든 "이 칸이 파이는가"를 생성 순서와 상관없이 물어볼 수 있다.
  *
  * - 치즈: 노이즈 하나가 임계값을 넘는 곳 → 덩어리 모양의 넓은 cavern(지하 빈 공간)
@@ -212,26 +213,26 @@ function surfaceBlock(height: number): BlockType {
  * 스파게티는 지표까지 뚫을 수 있어 동굴 입구가 된다.
  * 최하단 y = 0은 파지 않아 월드 바닥이 뚫리지 않는다.
  */
-function isCave(wx: number, y: number, wz: number, ground: number): boolean {
+function isCave(noise: Noise, wx: number, y: number, wz: number, ground: number): boolean {
   if (y < 1 || y >= ground) return false;
 
   const cheese =
     y < ground - CHEESE_MIN_DEPTH &&
-    noise3d(wx * CHEESE_SCALE_XZ, y * CHEESE_SCALE_Y, wz * CHEESE_SCALE_XZ) > CHEESE_THRESHOLD;
+    noise.noise3d(wx * CHEESE_SCALE_XZ, y * CHEESE_SCALE_Y, wz * CHEESE_SCALE_XZ) > CHEESE_THRESHOLD;
   if (cheese) return true;
 
   // 이 위치의 터널 폭. 굵기 노이즈(대략 -1 ~ 1)만큼 BASE에서 오르내린다.
   const t = SPAGHETTI_THICKNESS_SCALE;
   const width =
     SPAGHETTI_WIDTH_BASE +
-    noise3d(wx * t + SPAGHETTI_OFFSET_THICKNESS, y * t, wz * t) * SPAGHETTI_WIDTH_VARIATION;
+    noise.noise3d(wx * t + SPAGHETTI_OFFSET_THICKNESS, y * t, wz * t) * SPAGHETTI_WIDTH_VARIATION;
 
   const sx = wx * SPAGHETTI_SCALE_XZ;
   const sy = y * SPAGHETTI_SCALE_Y;
   const sz = wz * SPAGHETTI_SCALE_XZ;
   return (
-    Math.abs(noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < width &&
-    Math.abs(noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < width
+    Math.abs(noise.noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < width &&
+    Math.abs(noise.noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < width
   );
 }
 
@@ -250,9 +251,13 @@ function columnBlock(y: number, height: number, surface: BlockType): BlockType {
 export class Chunk {
   blocks: Uint8Array;
 
+  /**
+   * @param noise 이 청크가 속한 월드의 노이즈. 같은 시드의 노이즈면 같은 좌표에 항상 같은 청크가 나온다.
+   */
   constructor(
     public readonly cx: number,
     public readonly cz: number,
+    private readonly noise: Noise,
   ) {
     this.blocks = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
     this.generate();
@@ -369,7 +374,7 @@ export class Chunk {
         // baseHeight: fBm이 반환한 원시 노이즈 값
         // height: 노이즈를 실제 블록 높이로 변환
         // clampedHeight: 유효 범위로 제한
-        const baseHeight = fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
+        const baseHeight = this.noise.fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
         const height = Math.floor(SEA_LEVEL + baseHeight * 18);
         const clampedHeight = Math.max(1, Math.min(WORLD_HEIGHT - 1, height));
 
@@ -402,7 +407,7 @@ export class Chunk {
 
         // 땅이 있는 칸(y < ground)만 검사한다. 지표 위는 이미 공기라 노이즈 계산을 건너뛴다.
         for (let y = 1; y < ground; y++) {
-          if (isCave(wx, y, wz, ground)) this.setBlock(x, y, z, BlockType.Air);
+          if (isCave(this.noise, wx, y, wz, ground)) this.setBlock(x, y, z, BlockType.Air);
         }
       }
     }
@@ -427,12 +432,12 @@ export class Chunk {
       for (let x = LEAF_RADIUS; x < CHUNK_SIZE - LEAF_RADIUS; x++) {
         const wx = this.cx * CHUNK_SIZE + x;
         const wz = this.cz * CHUNK_SIZE + z;
-        if (hash2d(wx, wz, SEED_TREE_PLACE) >= TREE_CHANCE) continue;
+        if (this.noise.hash2d(wx, wz, CHANNEL_TREE_PLACE) >= TREE_CHANCE) continue;
 
         // 블록 배열 대신 지형 규칙과 isCave로 판단한다 — 동굴을 이미 팠는지와 상관없이 같은 답이 나온다.
         const ground = heights[z * CHUNK_SIZE + x];
         if (surfaceBlock(ground) !== BlockType.Grass) continue;
-        if (isCave(wx, ground - 1, wz, ground)) continue; // 표면이 파이는 동굴 입구 자리
+        if (isCave(this.noise, wx, ground - 1, wz, ground)) continue; // 표면이 파이는 동굴 입구 자리
 
 
         const tooClose = planted.some(
@@ -442,7 +447,7 @@ export class Chunk {
 
         const trunk =
           TREE_MIN_TRUNK +
-          Math.floor(hash2d(wx, wz, SEED_TREE_HEIGHT) * (TREE_MAX_TRUNK - TREE_MIN_TRUNK + 1));
+          Math.floor(this.noise.hash2d(wx, wz, CHANNEL_TREE_HEIGHT) * (TREE_MAX_TRUNK - TREE_MIN_TRUNK + 1));
         // 잎 꼭대기(기둥 맨 위 + 1)가 월드 높이를 넘으면 심지 않는다.
         if (ground + trunk >= WORLD_HEIGHT) continue;
 

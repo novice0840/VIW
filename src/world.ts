@@ -1,5 +1,6 @@
 import { BlockType } from './block';
 import { Chunk, CHUNK_SIZE, WORLD_HEIGHT, chunkKey } from './chunk';
+import { Noise } from './noise';
 
 /**
  * @descriotion 청크(Chunk)들의 컨네이너
@@ -8,12 +9,21 @@ import { Chunk, CHUNK_SIZE, WORLD_HEIGHT, chunkKey } from './chunk';
  */
 export class World {
   chunks = new Map<string, Chunk>();
+  // 모든 청크가 이 노이즈 하나로 생성된다. 순열표를 청크마다 다시 섞지 않도록 월드가 한 번만 만든다.
+  private readonly noise: Noise;
+
+  /**
+   * @param seed 월드 시드 (32비트 정수). 같은 시드면 같은 지형이 나온다.
+   */
+  constructor(readonly seed: number) {
+    this.noise = new Noise(seed);
+  }
 
   getChunk(cx: number, cz: number): Chunk {
     const k = chunkKey(cx, cz);
     let chunk = this.chunks.get(k);
     if (!chunk) {
-      chunk = new Chunk(cx, cz);
+      chunk = new Chunk(cx, cz, this.noise);
       this.chunks.set(k, chunk);
     }
     return chunk;
