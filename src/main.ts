@@ -6,8 +6,11 @@ import { WORLD_HEIGHT } from './chunk';
 import { Hotbar } from './hotbar';
 import { DebugHud } from './debugHud';
 import { stats } from './stats';
-import { World } from './world';
-import { parseSeed, randomSeed } from './seed';
+import { openLocalWorld } from './localWorld';
+import { WorldSaver } from './worldSaver';
+
+// 블록을 바꾸지 않아도 플레이어 위치가 저장되도록 이 간격마다 저장한다.
+const AUTOSAVE_INTERVAL_MS = 30_000;
 
 // 블록을 조준할 수 있는 최대 거리 (마인크래프트의 손 닿는 거리 ≈ 4.5~5블록)
 const REACH = 6;
@@ -34,9 +37,7 @@ async function main() {
   // 플레이어의 물리·입력과 1인칭 시점을 함께 담당
   const player = new Player();
 
-  // 월드 목록 화면(#22)이 생기기 전까지는 주소의 ?seed= 값으로 월드를 고른다. 없으면 무작위.
-  const seedParam = new URLSearchParams(location.search).get('seed');
-  const world = new World((seedParam !== null ? parseSeed(seedParam) : null) ?? randomSeed());
+  const { world, record, store } = await openLocalWorld(new URLSearchParams(location.search));
 
   try {
     await renderer.init(canvas, world);
@@ -46,15 +47,31 @@ async function main() {
     return;
   }
 
-  player.world = renderer.world;
-  renderer.world.generateAround(player.position[0], player.position[2], 1);
-  const spawnX = Math.floor(player.position[0]);
-  const spawnZ = Math.floor(player.position[2]);
-  let spawnY = 63;
-  while (spawnY > 0 && !isSolid(renderer.world.getBlock(spawnX, spawnY, spawnZ))) {
-    spawnY--;
+  player.world = world;
+  if (record.player) player.applyState(record.player);
+  // 청크는 비동기로 도착한다. 발밑 지형이 없으면 시작하자마자 떨어지므로 주변 청크를 기다린다.
+  await world.loadAround(player.position[0], player.position[2], 1);
+  if (!record.player) {
+    // 처음 여는 월드라 저장된 위치가 없다. 스폰 기둥의 가장 높은 블록 위에 세운다.
+    const spawnX = Math.floor(player.position[0]);
+    const spawnZ = Math.floor(player.position[2]);
+    let spawnY = WORLD_HEIGHT - 1;
+    while (spawnY > 0 && !isSolid(world.getBlock(spawnX, spawnY, spawnZ))) {
+      spawnY--;
+    }
+    player.position[1] = spawnY + 1 + 1.62;
   }
-  player.position[1] = spawnY + 1 + 1.62;
+
+  if (store) {
+    const saver = new WorldSaver(store, world, record, () => player.getState());
+    setInterval(() => void saver.flush(), AUTOSAVE_INTERVAL_MS);
+    // 탭을 숨기거나 닫을 때 저장한다. visibilitychange(hidden)는 탭 전환, 창 최소화, 닫기에서
+    // 대부분 불리고 pagehide보다 먼저 와서 비동기 저장이 끝날 시간이 더 있다. pagehide는 그걸 놓친 경우의 보험이다.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') void saver.flush();
+    });
+    window.addEventListener('pagehide', () => void saver.flush());
+  }
 
   player.attachEvents(canvas);
 
@@ -75,8 +92,8 @@ async function main() {
     if (e.button === MouseButton.Left) {
       // 좌클릭 = 파괴. y=0은 월드 바닥(베드락 역할)이라 뚫리지 않게 보호
       if (hit.block[1] === 0) return;
-      renderer.world.setBlock(hit.block[0], hit.block[1], hit.block[2], BlockType.Air);
-      renderer.invalidateChunkAt(hit.block[0], hit.block[2]);
+      // 메시 갱신과 저장은 World의 블록 변경 구독자가 맡는다.
+      world.setBlock(hit.block[0], hit.block[1], hit.block[2], BlockType.Air);
     } else if (e.button === MouseButton.Right) {
       // 우클릭 = 설치. 맞은 면의 법선 방향 한 칸 앞이 설치 위치
       const px = hit.block[0] + hit.normal[0];
@@ -84,8 +101,7 @@ async function main() {
       const pz = hit.block[2] + hit.normal[2];
       if (py < 0 || py >= WORLD_HEIGHT) return;
       if (player.occupiesBlock(px, py, pz)) return;
-      renderer.world.setBlock(px, py, pz, player.selectedBlock);
-      renderer.invalidateChunkAt(px, pz);
+      world.setBlock(px, py, pz, player.selectedBlock);
     }
   });
 
@@ -133,7 +149,7 @@ async function main() {
     player.update(dt);
     hotbar.update(player.selectedBlock);
     // 조준 대상은 플레이어가 움직인 뒤에 구해야 이번 프레임 화면과 어긋나지 않는다.
-    aimed = raycast(renderer.world, player.position, player.getForward(), REACH);
+    aimed = raycast(world, player.position, player.getForward(), REACH);
     renderer.render(player, timestamp / 1000, aimed && aimed.block);
 
     // CPU 시간 = 이번 프레임에 JS가 일한 시간. GPU는 submit 이후 따로 일하므로 여기에 들어가지 않는다.
@@ -143,7 +159,7 @@ async function main() {
       debugHud.update(report, {
         position: player.position,
         renderDistance: renderer.renderDistance,
-        seed: world.seed,
+        seed: record.seed,
         gpuTimingSupported: renderer.gpuTimingSupported,
       });
     }

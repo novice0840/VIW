@@ -248,19 +248,33 @@ function columnBlock(y: number, height: number, surface: BlockType): BlockType {
   return BlockType.Stone;
 }
 
-export class Chunk {
-  blocks: Uint8Array;
+// 청크 하나의 블록 수 = 블록 배열의 길이 (블록 하나 = 1바이트)
+export const CHUNK_VOLUME = CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE;
 
+export class Chunk {
   /**
-   * @param noise 이 청크가 속한 월드의 노이즈. 같은 시드의 노이즈면 같은 좌표에 항상 같은 청크가 나온다.
+   * @param blocks 블록 배열. 저장소에서 불러온 청크는 저장된 배열을, 새 청크는 빈 배열(전부 Air)을 받는다.
    */
   constructor(
     public readonly cx: number,
     public readonly cz: number,
-    private readonly noise: Noise,
+    public readonly blocks: Uint8Array = new Uint8Array(CHUNK_VOLUME),
   ) {
-    this.blocks = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
-    this.generate();
+    if (blocks.length !== CHUNK_VOLUME) {
+      throw new Error(`청크 블록 수가 ${blocks.length}개다 (${CHUNK_VOLUME}개여야 한다)`);
+    }
+  }
+
+  /**
+   * @description 월드 노이즈로 (cx, cz) 청크를 새로 생성하는 함수
+   * @param noise 이 청크가 속한 월드의 노이즈. 같은 시드의 노이즈면 같은 좌표에 항상 같은 청크가 나온다.
+   *
+   * 생성과 불러오기를 나눠 두었다. 저장된 청크는 생성 없이 `new Chunk(cx, cz, blocks)`로 바로 만든다.
+   */
+  static generate(cx: number, cz: number, noise: Noise): Chunk {
+    const chunk = new Chunk(cx, cz);
+    chunk.generate(noise);
+    return chunk;
   }
 
   /**
@@ -350,17 +364,17 @@ export class Chunk {
    * - 동굴은 지표 아래(y < ground)만, 나무는 지표 위(y >= ground)만 건드려 칸이 겹치지 않는다
    * - 나무는 표면이 파이는 자리(isCave)를 직접 물어보고 피한다
    */
-  private generate() {
-    const heights = this.generateTerrain();
-    this.carveCaves(heights);
-    this.placeTrees(heights);
+  private generate(noise: Noise) {
+    const heights = this.generateTerrain(noise);
+    this.carveCaves(noise, heights);
+    this.placeTrees(noise, heights);
   }
 
   /**
    * @description 높이맵으로 기둥마다 땅을 채우는 함수
    * @returns 기둥별 지형 높이 (index = z * CHUNK_SIZE + x). 표면 블록은 height - 1에 있다.
    */
-  private generateTerrain(): Uint8Array {
+  private generateTerrain(noise: Noise): Uint8Array {
     const wx = this.cx * CHUNK_SIZE;
     const wz = this.cz * CHUNK_SIZE;
     const heights = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
@@ -374,7 +388,7 @@ export class Chunk {
         // baseHeight: fBm이 반환한 원시 노이즈 값
         // height: 노이즈를 실제 블록 높이로 변환
         // clampedHeight: 유효 범위로 제한
-        const baseHeight = this.noise.fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
+        const baseHeight = noise.fbm(worldX * 0.01, worldZ * 0.01, 5, 2.0, 0.5);
         const height = Math.floor(SEA_LEVEL + baseHeight * 18);
         const clampedHeight = Math.max(1, Math.min(WORLD_HEIGHT - 1, height));
 
@@ -398,7 +412,7 @@ export class Chunk {
    * 블록마다 그 좌표만 보고 판정하므로 이웃 청크를 볼 필요가 없어,
    * 청크 경계에서도 동굴이 끊김 없이 이어진다.
    */
-  private carveCaves(heights: Uint8Array) {
+  private carveCaves(noise: Noise, heights: Uint8Array) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
         const wx = this.cx * CHUNK_SIZE + x;
@@ -407,7 +421,7 @@ export class Chunk {
 
         // 땅이 있는 칸(y < ground)만 검사한다. 지표 위는 이미 공기라 노이즈 계산을 건너뛴다.
         for (let y = 1; y < ground; y++) {
-          if (isCave(this.noise, wx, y, wz, ground)) this.setBlock(x, y, z, BlockType.Air);
+          if (isCave(noise, wx, y, wz, ground)) this.setBlock(x, y, z, BlockType.Air);
         }
       }
     }
@@ -423,7 +437,7 @@ export class Chunk {
    * 그 결과 청크 경계를 따라 폭 2 * LEAF_RADIUS의 나무 없는 띠가 생긴다 — 경계를 넘는
    * 구조물을 다루려면 이웃 청크에 블록을 써 넣는 구조가 필요하다.
    */
-  private placeTrees(heights: Uint8Array) {
+  private placeTrees(noise: Noise, heights: Uint8Array) {
     // 이미 심은 기둥의 로컬 좌표. 간격 검사용이다.
     // 순회 순서가 고정이라 이 검사도 결정론적이다 — 같은 청크면 항상 같은 나무가 탈락한다.
     const planted: [number, number][] = [];
@@ -432,12 +446,12 @@ export class Chunk {
       for (let x = LEAF_RADIUS; x < CHUNK_SIZE - LEAF_RADIUS; x++) {
         const wx = this.cx * CHUNK_SIZE + x;
         const wz = this.cz * CHUNK_SIZE + z;
-        if (this.noise.hash2d(wx, wz, CHANNEL_TREE_PLACE) >= TREE_CHANCE) continue;
+        if (noise.hash2d(wx, wz, CHANNEL_TREE_PLACE) >= TREE_CHANCE) continue;
 
         // 블록 배열 대신 지형 규칙과 isCave로 판단한다 — 동굴을 이미 팠는지와 상관없이 같은 답이 나온다.
         const ground = heights[z * CHUNK_SIZE + x];
         if (surfaceBlock(ground) !== BlockType.Grass) continue;
-        if (isCave(this.noise, wx, ground - 1, wz, ground)) continue; // 표면이 파이는 동굴 입구 자리
+        if (isCave(noise, wx, ground - 1, wz, ground)) continue; // 표면이 파이는 동굴 입구 자리
 
 
         const tooClose = planted.some(
@@ -447,7 +461,7 @@ export class Chunk {
 
         const trunk =
           TREE_MIN_TRUNK +
-          Math.floor(this.noise.hash2d(wx, wz, CHANNEL_TREE_HEIGHT) * (TREE_MAX_TRUNK - TREE_MIN_TRUNK + 1));
+          Math.floor(noise.hash2d(wx, wz, CHANNEL_TREE_HEIGHT) * (TREE_MAX_TRUNK - TREE_MIN_TRUNK + 1));
         // 잎 꼭대기(기둥 맨 위 + 1)가 월드 높이를 넘으면 심지 않는다.
         if (ground + trunk >= WORLD_HEIGHT) continue;
 
