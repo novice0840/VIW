@@ -19,14 +19,14 @@ describe('Noise', () => {
 
 describe('Chunk 생성', () => {
   it('같은 시드와 좌표면 블록이 똑같다', () => {
-    const a = new Chunk(3, -2, new Noise(42));
-    const b = new Chunk(3, -2, new Noise(42));
+    const a = Chunk.generate(3, -2, new Noise(42));
+    const b = Chunk.generate(3, -2, new Noise(42));
     expect(a.blocks).toEqual(b.blocks);
   });
 
   it('시드가 다르면 블록이 달라진다', () => {
-    const a = new Chunk(0, 0, new Noise(42));
-    const b = new Chunk(0, 0, new Noise(43));
+    const a = Chunk.generate(0, 0, new Noise(42));
+    const b = Chunk.generate(0, 0, new Noise(43));
     expect(a.blocks).not.toEqual(b.blocks);
   });
 });

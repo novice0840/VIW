@@ -101,6 +101,8 @@ export class Renderer {
    */
   async init(canvas: HTMLCanvasElement, world: World) {
     this.world = world;
+    // 누가 블록을 바꿨든(플레이어, 나중에는 서버) 바뀐 청크의 메시를 버린다.
+    world.onBlockChange(({ cx, cz }) => this.invalidateChunk(cx, cz));
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw new Error('No WebGPU adapter');
     // timestamp-query는 선택 기능이라 어댑터가 지원할 때만 device 생성 시 요청할 수 있다.
@@ -170,9 +172,9 @@ export class Renderer {
     globalData[27] = 0.008; // fogDensity
     this.device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData);
 
-    // Generate chunks around player
+    // 플레이어 주변 청크를 요청한다. 도착을 기다리지 않으므로, 아직 없는 청크는 이번 프레임에 그리지 않는다.
     const renderDistance = this.renderDistance;
-    this.world.generateAround(player.position[0], player.position[2], renderDistance);
+    this.world.requestAround(player.position[0], player.position[2], renderDistance);
 
     // Begin render pass
     const encoder = this.device.createCommandEncoder();
@@ -296,9 +298,7 @@ export class Renderer {
    * 쓰는데, 범위 밖(옆 청크)을 Air로 취급해 경계 면은 항상 그려지기 때문에
    * 경계 블록을 부숴도 옆 청크 메시는 이미 올바른 상태다.
    */
-  invalidateChunkAt(wx: number, wz: number) {
-    const cx = Math.floor(wx / CHUNK_SIZE);
-    const cz = Math.floor(wz / CHUNK_SIZE);
+  private invalidateChunk(cx: number, cz: number) {
     const key = chunkKey(cx, cz);
     const mesh = this.chunkMeshes.get(key);
     if (mesh) {
@@ -496,6 +496,8 @@ export class Renderer {
     if (mesh) return mesh;
 
     const chunk = this.world.getChunk(cx, cz);
+    // 아직 도착하지 않은 청크. 도착한 뒤 프레임에서 메시를 만든다.
+    if (!chunk) return null;
     const { vertices, vertexCount } = chunk.buildMesh();
 
     if (vertexCount === 0) return null;

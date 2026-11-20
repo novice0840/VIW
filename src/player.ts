@@ -2,6 +2,19 @@ import { clamp, hasOverlap, mat4, vec3, type Vec3 } from './math';
 import { BlockType, isSolid, HOTBAR } from './block';
 import { World } from './world';
 
+/**
+ * @description 저장하고 복원하는 플레이어 상태 — 껐다 켰을 때 같은 자리, 같은 시선, 같은 손으로 돌아온다
+ *
+ * 속도나 누르고 있던 키처럼 순간적인 상태는 넣지 않는다. 복원하면 제자리에 멈춘 상태로 시작한다.
+ */
+export interface PlayerState {
+  position: Vec3;
+  yaw: number;
+  pitch: number;
+  selectedBlock: BlockType;
+  flying: boolean;
+}
+
 export class Player {
   /** 학습 노트
    *  position의 X, Z는 초기 스폰 월드 좌표. 단 Y는 실제로 게임에 반영되기
@@ -196,6 +209,28 @@ export class Player {
       if (this.collidesAt(x, newFeetY, z)) return;
     }
     this.position[1] = newFeetY + this.eyeHeight;
+  }
+
+  getState(): PlayerState {
+    return {
+      // 배열은 복사한다. 그대로 넘기면 저장이 끝나기 전에 움직인 위치가 저장될 수 있다.
+      position: [...this.position],
+      yaw: this.yaw,
+      pitch: this.pitch,
+      selectedBlock: this.selectedBlock,
+      flying: this.flying,
+    };
+  }
+
+  applyState(state: PlayerState) {
+    this.position = [...state.position];
+    this.yaw = state.yaw;
+    this.pitch = state.pitch;
+    // 핫바 구성이 바뀌어 더는 고를 수 없는 블록이면 기본값을 둔다.
+    if (HOTBAR.includes(state.selectedBlock)) this.selectedBlock = state.selectedBlock;
+    this.flying = state.flying;
+    this.velocityY = 0;
+    this.onGround = false;
   }
 
   /**
