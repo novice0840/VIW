@@ -5,7 +5,7 @@ import type { PlayerState } from './player';
  *
  * 수정된 청크만 저장하고 나머지는 시드로 다시 생성하므로, 생성 규칙이 바뀌면
  * 저장된 청크(옛 지형)와 새로 생성한 청크(새 지형) 사이 경계가 어긋난다.
- * 버전이 다른 월드는 열지 않는다.
+ * 버전이 다른 월드는 목록에만 보이고 열지 않는다 (삭제는 할 수 있다).
  */
 export const SAVE_VERSION = 1;
 
@@ -108,6 +108,15 @@ export class WorldStore {
   async getWorld(id: string): Promise<WorldRecord | undefined> {
     const tx = this.db.transaction(WORLDS, 'readonly');
     return request<WorldRecord | undefined>(tx.objectStore(WORLDS).get(id));
+  }
+
+  /**
+   * @description 저장된 월드를 마지막으로 플레이한 순서(최근 것 먼저)로 돌려주는 함수
+   */
+  async listWorlds(): Promise<WorldRecord[]> {
+    const tx = this.db.transaction(WORLDS, 'readonly');
+    const worlds = await request<WorldRecord[]>(tx.objectStore(WORLDS).getAll());
+    return worlds.sort((a, b) => b.lastPlayedAt - a.lastPlayedAt);
   }
 
   async putWorld(world: WorldRecord): Promise<void> {

@@ -6,8 +6,9 @@ import { WORLD_HEIGHT } from './chunk';
 import { Hotbar } from './hotbar';
 import { DebugHud } from './debugHud';
 import { stats } from './stats';
-import { openLocalWorld } from './localWorld';
+import { openLocalWorld, openStore, openTemporaryWorld, type OpenedWorld } from './localWorld';
 import { WorldSaver } from './worldSaver';
+import { menuUrl, showWorldMenu } from './worldMenu';
 
 // 블록을 바꾸지 않아도 플레이어 위치가 저장되도록 이 간격마다 저장한다.
 const AUTOSAVE_INTERVAL_MS = 30_000;
@@ -24,6 +25,13 @@ const enum MouseButton {
   Right = 2,
 }
 
+/**
+ * @description 시작 지점 — 주소에 따라 시작 화면을 보여 주거나 월드를 연다
+ *
+ * - `?world=<id>` 없음: 시작 화면(월드 목록)
+ * - `?world=<id>` 있음: 그 월드를 플레이
+ * - IndexedDB를 쓸 수 없으면: 목록 없이 저장되지 않는 임시 월드를 바로 연다
+ */
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
@@ -32,12 +40,33 @@ async function main() {
     return;
   }
 
+  const store = await openStore();
+  const worldId = new URLSearchParams(location.search).get('world');
+
+  if (store && worldId === null) {
+    await showWorldMenu(store);
+    return;
+  }
+
+  const opened = store ? await openLocalWorld(store, worldId!) : await openTemporaryWorld();
+  if (!opened) {
+    // 삭제됐거나 이전 버전이라 열 수 없는 월드. 시작 화면으로 돌아간다.
+    console.warn(`월드 ${worldId}를 열 수 없어 시작 화면으로 돌아간다`);
+    location.replace(menuUrl());
+    return;
+  }
+
+  await startGame(canvas, opened);
+}
+
+/**
+ * @description 연 월드로 게임을 시작하는 함수
+ */
+async function startGame(canvas: HTMLCanvasElement, { world, record, store }: OpenedWorld) {
   // WebGPU API를 직접 다루며 화면에 세계를 그리는 역할
   const renderer = new Renderer();
   // 플레이어의 물리·입력과 1인칭 시점을 함께 담당
   const player = new Player();
-
-  const { world, record, store } = await openLocalWorld(new URLSearchParams(location.search));
 
   try {
     await renderer.init(canvas, world);
@@ -62,8 +91,8 @@ async function main() {
     player.position[1] = spawnY + 1 + 1.62;
   }
 
-  if (store) {
-    const saver = new WorldSaver(store, world, record, () => player.getState());
+  const saver = store ? new WorldSaver(store, world, record, () => player.getState()) : null;
+  if (saver) {
     setInterval(() => void saver.flush(), AUTOSAVE_INTERVAL_MS);
     // 탭을 숨기거나 닫을 때 저장한다. visibilitychange(hidden)는 탭 전환, 창 최소화, 닫기에서
     // 대부분 불리고 pagehide보다 먼저 와서 비동기 저장이 끝날 시간이 더 있다. pagehide는 그걸 놓친 경우의 보험이다.
@@ -74,6 +103,7 @@ async function main() {
   }
 
   player.attachEvents(canvas);
+  setupPauseMenu(canvas, record.name, saver);
 
   const hotbar = new Hotbar(
     document.getElementById('hotbar')!,
@@ -168,6 +198,47 @@ async function main() {
   }
 
   requestAnimationFrame(frame);
+}
+
+/**
+ * @description 마우스 잠금이 풀려 있는 동안 일시정지 메뉴를 보여 주는 함수
+ * @param saver null이면 임시 월드라 저장하지 않고 나간다
+ *
+ * 게임을 처음 열었을 때도 잠금 전이라 이 메뉴가 보인다 — "게임으로 돌아가기"가 시작 버튼 역할을 한다.
+ * 화면은 메뉴 뒤에서 계속 그려진다 (마크처럼 시간을 멈추지는 않는다).
+ */
+function setupPauseMenu(canvas: HTMLCanvasElement, worldName: string, saver: WorldSaver | null) {
+  const menu = document.getElementById('pause-menu')!;
+  const resume = document.getElementById('resume') as HTMLButtonElement;
+  const exit = document.getElementById('exit-world') as HTMLButtonElement;
+  document.getElementById('pause-title')!.textContent = worldName;
+  if (!saver) exit.textContent = '나가기 (저장되지 않음)';
+
+  const update = () => {
+    menu.style.display = document.pointerLockElement === canvas ? 'none' : 'flex';
+  };
+  document.addEventListener('pointerlockchange', update);
+  update();
+
+  resume.addEventListener('click', () => {
+    // ESC로 잠금을 푼 직후 1초 정도는 브라우저가 다시 잠그는 요청을 거절한다 (Chrome).
+    // 거절돼도 메뉴가 그대로 남아 다시 누르면 되므로 에러는 무시한다.
+    void Promise.resolve(canvas.requestPointerLock()).catch(() => {});
+  });
+
+  exit.addEventListener('click', async () => {
+    exit.disabled = true;
+    resume.disabled = true;
+    exit.textContent = '저장 중…';
+    if (saver && !(await saver.flush())) {
+      alert('저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+      exit.disabled = false;
+      resume.disabled = false;
+      exit.textContent = '저장 후 나가기';
+      return;
+    }
+    location.assign(menuUrl());
+  });
 }
 
 main();

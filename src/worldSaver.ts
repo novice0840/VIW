@@ -20,7 +20,7 @@ export class WorldSaver {
   private readonly dirty = new Map<string, Chunk>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   // 저장을 순서대로 이어 붙이는 꼬리. 앞선 저장이 끝나기 전에 다음 저장이 끼어들지 않게 한다.
-  private saving: Promise<void> = Promise.resolve();
+  private saving: Promise<unknown> = Promise.resolve();
   private readonly unsubscribe: () => void;
 
   /**
@@ -41,13 +41,13 @@ export class WorldSaver {
 
   /**
    * @description 바뀐 청크와 플레이어 상태를 지금 저장하는 함수
-   * @returns 이번 저장이 끝나면 resolve된다. 실패해도 reject하지 않고, 바뀐 청크를 다음 저장으로 넘긴다.
+   * @returns 이번 저장이 끝나면 성공 여부로 resolve된다. 실패해도 reject하지 않고, 바뀐 청크를 다음 저장으로 넘긴다.
    *
    * 저장할 내용은 이 함수를 부른 순간에 확정한다. 청크는 encodeChunk가 복사하고,
    * 플레이어 상태도 새 객체로 받는다. 그래서 IndexedDB 쓰기가 끝나기 전에 블록이나
    * 위치가 또 바뀌어도 저장되는 내용이 섞이지 않는다.
    */
-  flush(): Promise<void> {
+  flush(): Promise<boolean> {
     this.cancelTimer();
 
     const entries = [...this.dirty];
@@ -63,18 +63,23 @@ export class WorldSaver {
       lastPlayedAt: Date.now(),
     };
 
-    this.saving = this.saving
+    const result = this.saving
       .then(() => this.store.save(record, chunks))
-      .catch((err) => {
-        console.error('월드를 저장하지 못했다', err);
-        // 저장하지 못한 청크를 다시 dirty로 돌려 다음 저장에 포함시킨다.
-        // 그 사이 또 바뀌어 이미 dirty에 있는 청크는 같은 객체라 그대로 둬도 된다.
-        for (const [key, chunk] of entries) {
-          if (!this.dirty.has(key)) this.dirty.set(key, chunk);
-        }
-        if (this.dirty.size > 0) this.schedule();
-      });
-    return this.saving;
+      .then(
+        () => true,
+        (err) => {
+          console.error('월드를 저장하지 못했다', err);
+          // 저장하지 못한 청크를 다시 dirty로 돌려 다음 저장에 포함시킨다.
+          // 그 사이 또 바뀌어 이미 dirty에 있는 청크는 같은 객체라 그대로 둬도 된다.
+          for (const [key, chunk] of entries) {
+            if (!this.dirty.has(key)) this.dirty.set(key, chunk);
+          }
+          if (this.dirty.size > 0) this.schedule();
+          return false;
+        },
+      );
+    this.saving = result;
+    return result;
   }
 
   /**
